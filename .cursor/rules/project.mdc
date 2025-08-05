@@ -1,0 +1,149 @@
+---
+alwaysApply: false
+---
+# FastAPI 后端项目 Cursor Rules
+
+## 项目架构指南
+
+### 总体架构
+- 遵循分层架构模式：API层 -> Service层 -> Repository层 -> Model层
+- 保持关注点分离，每层负责特定职责
+- 使用依赖注入模式管理服务实例
+
+### 目录结构规范
+```
+app/
+├── api/           # API路由层
+│   └── v1/        # API版本管理
+├── core/          # 核心配置和工具
+├── models/        # SQLAlchemy数据模型
+├── schemas/       # Pydantic数据验证模型
+├── service/       # 业务逻辑层
+├── repository/    # 数据访问层
+└── main.py        # 应用入口
+```
+
+## 编码规范
+
+### 1. 配置管理
+- 使用 `pydantic-settings` 进行配置管理
+- 采用嵌套配置模型组织相关配置项
+- 使用 `@lru_cache` 缓存配置实例
+- 支持多环境配置（dev/prod），通过 `.env.{environment}` 文件管理
+- 配置类必须使用 `BaseSettings` 基类
+- 环境变量使用统一前缀（如 `DEMO_`）
+
+### 2. 数据库操作
+- 使用 SQLAlchemy 2.0+ 异步ORM
+- 数据库连接通过全局引擎和会话工厂管理
+- 在应用启动时初始化数据库连接，关闭时清理资源
+- Repository 层负责所有数据库操作
+- 使用依赖注入 `get_db()` 提供数据库会话
+- 所有数据库操作必须是异步的
+
+### 3. 模型设计
+- SQLAlchemy模型与Pydantic模型分离
+- 使用 `DeclarativeBase` 作为所有模型的基类
+- 创建可复用的Mixin类（如 `DateTimeMixin`）
+- 模型文件使用描述性命名（如 `heroes.py`, `users.py`）
+- 在 `__init__.py` 中明确导出所有模型
+
+### 4. API设计
+- 遵循RESTful API设计原则
+- 使用APIRouter组织路由，支持前缀和标签
+- 路由文件命名格式：`{resource}_route.py`
+- 每个资源对应的CRUD操作要完整实现
+- 使用HTTP状态码表达操作结果
+- API响应使用明确的Pydantic模型
+
+### 5. 异常处理
+- 创建业务相关的自定义异常类
+- 继承FastAPI的HTTPException
+- 实现全局异常处理器作为兜底
+- 使用loguru记录异常信息
+- 异常信息要对用户友好
+
+### 6. 服务层模式
+- Service层处理业务逻辑
+- Repository层处理数据访问
+- Service通过构造函数注入Repository
+- 使用依赖注入获取Service实例
+- 保持方法的单一职责
+
+### 7. 数据验证
+- 使用Pydantic进行请求/响应数据验证
+- 创建Base模型避免重复定义
+- 区分Create、Update、Response等不同场景的模型
+- 使用 `model_validate()` 进行ORM对象转换
+- 启用 `from_attributes = True` 支持ORM对象
+
+## 开发工具和依赖
+
+### 包管理
+- 使用 uv 作为Python包管理器
+- 在 `pyproject.toml` 中定义项目信息和依赖
+- Python版本要求：3.13+
+
+### 核心依赖
+- `fastapi[standard]`: Web框架
+- `sqlalchemy`: 异步ORM
+- `asyncpg`: PostgreSQL异步驱动
+- `pydantic-settings`: 配置管理
+- `loguru`: 日志记录
+
+### 环境管理
+- 激活虚拟环境：使用uv环境
+- 环境变量通过 `.env.{environment}` 文件管理
+- 开发环境自动创建数据库表
+
+## 最佳实践
+
+### 1. 应用生命周期
+- 使用 `@asynccontextmanager` 管理应用生命周期
+- 启动时初始化配置和数据库连接
+- 关闭时清理资源
+- 根据环境决定是否自动创建表
+
+### 2. 日志记录
+- 使用loguru进行结构化日志记录
+- 记录关键操作的成功/失败信息
+- 包含必要的上下文信息（如资源ID）
+
+### 3. 错误处理
+- Repository层抛出业务异常
+- Service层处理业务逻辑
+- API层捕获并记录异常
+- 提供有意义的错误消息
+
+### 4. 代码组织
+- 每个模块有清晰的职责边界
+- 使用类型注解增强代码可读性
+- 遵循Python命名约定
+- 编写文档字符串说明复杂逻辑
+
+### 5. 数据库最佳实践
+- 使用连接池优化数据库性能
+- 正确处理事务和会话
+- 使用索引优化查询性能
+- 实现适当的错误回滚机制
+
+## 文件命名约定
+- API路由：`{resource}_route.py`
+- 服务类：`{resource}.py` in service/
+- 存储库：`{resource}.py` in repository/
+- 模型：`{resource}.py` in models/ 和 schemas/
+- 配置：`config.py`
+- 异常：`exceptions.py`
+
+## 代码风格
+- 使用类型注解
+- 遵循PEP 8编码规范
+- 优先使用异步/等待模式
+- 编写清晰的文档字符串
+- 保持函数和类的单一职责
+
+## 项目特定规则
+- 数据库时间戳使用服务器时间（PostgreSQL `func.now()`）
+- 密码等敏感信息不在响应中暴露
+- 使用计算字段动态生成配置值
+- 支持开发和生产环境的差异化配置

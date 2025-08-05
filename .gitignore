@@ -1,0 +1,16 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# Environment-specific files
+# 忽略所有目录下的 .env.* 文件
+**/.env.*
+# 但不要忽略 .env.sample 文件
+!.env.sample
