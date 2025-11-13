@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from app.api.users import auth_router
 from app.api.users import router as users_router
 from app.core.lifespan import lifespan
 
@@ -48,6 +49,9 @@ async def health_check():
     """健康检查接口"""
     return {"status": "healthy", "message": "Application is running"}
 
+
+# 注册认证路由
+app.include_router(auth_router, prefix="/api/v1")
 
 # 注册用户路由
 app.include_router(users_router, prefix="/api/v1")
