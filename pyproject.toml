@@ -8,6 +8,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "alembic>=1.17.1",
     "fastapi[uvicorn]>=0.121.1",
+    "httpx>=0.28.1",
     "jose>=1.0.0",
     "loguru>=0.7.3",
     "mypy>=1.18.2",
