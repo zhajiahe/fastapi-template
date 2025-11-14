@@ -281,12 +281,23 @@ async def get_state(thread_id: str):
     try:
         compiled_graph = get_compiled_graph()
         state = await compiled_graph.aget_state(config)
+
+        # 处理 created_at，可能已经是字符串或 datetime 对象
+        created_at_str = None
+        if state.created_at:
+            if isinstance(state.created_at, str):
+                created_at_str = state.created_at
+            elif hasattr(state.created_at, "isoformat"):
+                created_at_str = state.created_at.isoformat()
+            else:
+                created_at_str = str(state.created_at)
+
         return StateResponse(
             thread_id=thread_id,
             values=state.values,
             next=state.next,
             metadata=state.metadata,
-            created_at=state.created_at.isoformat() if state.created_at else None,
+            created_at=created_at_str,
             parent_config=state.parent_config,
         )
     except Exception as e:
