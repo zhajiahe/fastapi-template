@@ -79,7 +79,7 @@ async def delete_thread_checkpoints(thread_id: str) -> None:
         raise RuntimeError("Checkpointer not initialized. Call init_checkpointer() first.")
 
     try:
-        await checkpointer.adelete_thread({"configurable": {"thread_id": thread_id}})
+        await checkpointer.adelete_thread(thread_id)
         logger.info(f"✅ Deleted checkpoints for thread: {thread_id}")
     except Exception as e:
         logger.error(f"❌ Failed to delete checkpoints for thread {thread_id}: {e}")

@@ -5,11 +5,14 @@
 """
 
 import os
+from typing import Any
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
+from langchain_core.runnables import Runnable
 from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
 load_dotenv()
 
@@ -31,7 +34,7 @@ def math_tool(expression: str) -> str:
         return f"Error: {e}"
 
 
-def get_agent(checkpointer=None):
+def get_agent(checkpointer: Any | None = None) -> Runnable:
     """
     创建并返回 Agent 图
 
@@ -41,15 +44,18 @@ def get_agent(checkpointer=None):
     Returns:
         CompiledGraph: 编译后的 Agent 图
     """
+    api_key_value = os.getenv("SILICONFLOW_API_KEY")
+    secret_api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
+
     model = ChatOpenAI(
         model=os.getenv("SILICONFLOW_LLM_MODEL", "Qwen/Qwen3-8B"),
-        api_key=os.getenv("SILICONFLOW_API_KEY"),
+        api_key=secret_api_key,
         base_url=os.getenv("SILICONFLOW_API_BASE"),
-        max_tokens=500,
+        max_completion_tokens=500,
         temperature=0,
         extra_body={"thinking_budget": 20},
     )
-    agent = create_agent(model, tools=[math_tool], checkpointer=checkpointer)
+    agent: Runnable = create_agent(model, tools=[math_tool], checkpointer=checkpointer)
     return agent
 
 

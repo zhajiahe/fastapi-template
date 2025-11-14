@@ -9,8 +9,10 @@
 ### ✨ 核心特性
 
 - 🚀 **现代化技术栈**：FastAPI + SQLAlchemy 2.0 + LangGraph + Pydantic v2
-- 🔐 **完整的认证系统**：JWT 双令牌认证、密码加密、权限管理
-- 💬 **LangGraph 对话系统**：支持流式/非流式对话、会话管理、状态持久化
+- 🔐 **完整的认证系统**：JWT 双令牌、密码加密、资料更新、密码重置
+- 🧑‍💼 **用户个性化设置**：内置 `UserSettings`，支持默认模型/温度/Token、主题、语言等偏好
+- 💬 **LangGraph 对话系统**：流式/非流式对话、状态持久化、检查点、消息再生成与重置
+- 🗂️ **会话运营工具**：会话 CRUD、消息历史、导出/导入、全文搜索、用户级统计
 - 📊 **数据库管理**：Alembic 迁移、异步 ORM、连接池管理
 - 🧪 **测试覆盖**：集成测试、单元测试、测试覆盖率
 - 🔍 **代码质量**：Ruff、MyPy、Pre-commit 钩子
@@ -66,13 +68,16 @@ fastapi-template/
 │   │   ├── user.py               # 用户模型
 │   │   ├── conversation.py       # 会话模型
 │   │   ├── message.py            # 消息模型
-│   │   └── execution_log.py      # 执行日志模型
+│   │   ├── execution_log.py      # 执行日志模型
+│   │   └── user_settings.py      # 用户个性化设置
 │   ├── schemas/                  # Pydantic 数据模型
 │   │   ├── user.py               # 用户 Schema
 │   │   ├── chat.py               # 对话 Schema
-│   │   └── conversation.py       # 会话 Schema
+│   │   ├── conversation.py       # 会话 Schema
+│   │   └── user_settings.py      # 用户设置 Schema
 │   ├── utils/                    # 工具函数
 │   │   └── datetime.py           # 日期时间工具
+│   ├── sample_agent.py           # LangGraph 示例 Agent
 │   └── main.py                   # 应用入口和路由注册
 ├── alembic/                      # 数据库迁移
 │   ├── versions/                 # 迁移脚本版本
@@ -122,7 +127,7 @@ uv sync
 
 ```bash
 # 数据库配置
-DATABASE_URL=sqlite+aiosqlite:///./test.db
+DATABASE_URL=sqlite+aiosqlite:///./langgraph_app.db
 
 # JWT 配置（生产环境务必修改）
 SECRET_KEY=your-secret-key-change-in-production
@@ -136,7 +141,12 @@ APP_NAME=FastAPI-Template
 DEBUG=true
 
 # LangGraph 配置
-CHECKPOINT_DB_PATH=checkpoints.db
+CHECKPOINT_DB_PATH=./langgraph_app.db
+
+# LangChain / SiliconFlow 示例配置
+SILICONFLOW_API_KEY=your-api-key
+SILICONFLOW_API_BASE=https://api.siliconflow.cn/v1
+SILICONFLOW_LLM_MODEL=Qwen/Qwen3-8B
 ```
 
 ### 4. 初始化数据库
@@ -183,13 +193,14 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 集成了 LangGraph 对话流程编排系统：
 
-- **异步对话接口**：支持流式和非流式两种模式
-- **会话管理**：创建、查询、更新、删除会话
-- **消息历史**：完整的消息记录和查询功能
-- **状态持久化**：使用 AsyncSqliteSaver 持久化对话状态
-- **检查点管理**：支持时间旅行、状态恢复
-- **会话导出/导入**：支持会话数据的导出和导入
-- **全文搜索**：支持会话和消息的全文搜索
+- **异步对话接口**：支持非流式响应与 SSE 流式输出
+- **会话生命周期**：创建、查询、更新、删除、重置、硬删除
+- **消息操作**：完整的消息历史，并支持重新生成指定助手回复
+- **状态持久化**：使用 AsyncSqliteSaver 保留图状态，随时恢复
+- **检查点管理**：查看历史检查点，支持时间旅行能力
+- **会话导出/导入**：一键导出对话、消息与状态并可导入恢复
+- **全文搜索**：在当前用户范围内搜索消息内容
+- **用户统计**：获取会话 / 消息数量与最近会话概览
 
 ### 3. 数据库层
 
@@ -221,27 +232,42 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - **错误日志**：错误日志单独记录
 - **彩色输出**：控制台输出支持彩色显示
 
+### 6. 用户个性化设置
+
+通过 `user_settings` 表为每位用户保存偏好：
+
+- **默认 LLM 参数**：记录默认模型、温度和最大 Token
+- **界面偏好**：主题（light/dark）与语言（zh-CN/en 等）随时切换
+- **扩展字段**：`settings` JSON 可存储更多自定义配置
+- **API 通路**：`GET/PUT /api/v1/users/settings` 秒级读写当前用户配置
+
 ## 📚 API 端点概览
 
 ### 认证相关
 
 - `POST /api/v1/auth/register` - 用户注册
 - `POST /api/v1/auth/login` - 用户登录
-- `POST /api/v1/auth/refresh` - 刷新令牌
 - `GET /api/v1/auth/me` - 获取当前用户信息
-- `PUT /api/v1/auth/password` - 修改密码
+- `PUT /api/v1/auth/me` - 更新当前用户信息
+- `POST /api/v1/auth/reset-password` - 修改密码
 
 ### 用户管理（需要管理员权限）
 
 - `GET /api/v1/users` - 获取用户列表（分页）
 - `GET /api/v1/users/{user_id}` - 获取用户详情
+- `POST /api/v1/users` - 创建用户
 - `PUT /api/v1/users/{user_id}` - 更新用户信息
 - `DELETE /api/v1/users/{user_id}` - 删除用户
+
+### 用户个性化设置
+
+- `GET /api/v1/users/settings` - 获取用户设置
+- `PUT /api/v1/users/settings` - 更新默认模型、主题、语言等偏好
 
 ### 对话系统
 
 - `POST /api/v1/chat` - 发送消息（非流式）
-- `POST /api/v1/chat/stream` - 发送消息（流式）
+- `POST /api/v1/chat/stream` - 发送消息（流式 SSE）
 - `POST /api/v1/conversations` - 创建会话
 - `GET /api/v1/conversations` - 获取会话列表
 - `GET /api/v1/conversations/{thread_id}` - 获取会话详情
@@ -249,11 +275,20 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `DELETE /api/v1/conversations/{thread_id}` - 删除会话
 - `POST /api/v1/conversations/{thread_id}/reset` - 重置会话
 - `GET /api/v1/conversations/{thread_id}/messages` - 获取消息历史
+- `POST /api/v1/conversations/{thread_id}/messages/{message_id}/regenerate` - 重新生成助手消息
 - `GET /api/v1/conversations/{thread_id}/state` - 获取会话状态
 - `GET /api/v1/conversations/{thread_id}/checkpoints` - 获取检查点历史
 - `GET /api/v1/conversations/{thread_id}/export` - 导出会话
 - `POST /api/v1/conversations/import` - 导入会话
-- `GET /api/v1/search` - 搜索会话和消息
+- `POST /api/v1/conversations/search` - 搜索会话和消息
+- `GET /api/v1/conversations/users/stats` - 获取用户统计
+
+### 系统管理
+
+- `GET /health` - 健康检查
+- `GET /` - 根路径
+- `GET /docs` - Swagger UI
+- `GET /redoc` - ReDoc 文档
 
 ## 🛠️ 常用命令
 
@@ -306,9 +341,9 @@ pytest --cov=app --cov-report=html
 
 ### 集成新的 LLM 提供商
 
-1. 在 `app/core/graph.py` 中修改 `chatbot` 节点
-2. 添加相应的环境变量配置
-3. 更新 `pyproject.toml` 添加依赖
+1. 在 `app/sample_agent.py` 中调整 `get_agent()`（或自定义新的 Agent 图）
+2. 添加/修改对应的环境变量，如 API Key、Base URL、模型名称
+3. 更新 `pyproject.toml` 以添加所需 SDK 依赖
 
 ### 自定义 LangGraph 流程
 

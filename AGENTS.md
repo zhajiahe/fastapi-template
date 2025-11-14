@@ -76,12 +76,15 @@ fastapi-template/
 │   │   ├── user.py               # 用户模型
 │   │   ├── conversation.py       # 会话模型
 │   │   ├── message.py            # 消息模型
-│   │   └── execution_log.py      # 执行日志模型
+│   │   ├── execution_log.py      # 执行日志模型
+│   │   └── user_settings.py      # 用户设置模型
 │   ├── schemas/                  # Pydantic 数据模型
 │   │   ├── user.py               # 用户 Schema
 │   │   ├── chat.py               # 对话 Schema
-│   │   └── conversation.py       # 会话 Schema
+│   │   ├── conversation.py       # 会话 Schema
+│   │   └── user_settings.py      # 用户设置 Schema
 │   ├── utils/                    # 工具函数
+│   ├── sample_agent.py           # LangGraph 示例 Agent
 │   └── main.py                   # 应用入口和路由注册
 ├── alembic/                      # 数据库迁移
 │   ├── versions/                 # 迁移脚本版本
@@ -112,14 +115,12 @@ fastapi-template/
 
 ### 2. LangGraph 对话系统 (app/api/chat.py, app/core/graph.py)
 
-- ✅ 异步对话接口 (支持流式和非流式)
-- ✅ 会话管理 (创建、查询、更新、删除)
-- ✅ 消息历史记录
-- ✅ 状态持久化 (AsyncSqliteSaver)
-- ✅ 检查点管理 (支持时间旅行)
-- ✅ 执行日志记录
-- ✅ 会话导出/导入
-- ✅ 全文搜索
+- ✅ 异步对话接口（非流式 + SSE 流式）
+- ✅ 会话生命周期（创建/查询/更新/删除/重置/硬删除）
+- ✅ 消息历史与助手回复再生成
+- ✅ 状态持久化（AsyncSqliteSaver）与时间旅行检查点
+- ✅ 会话导出/导入与检查点清理
+- ✅ 全文搜索与用户统计
 
 ### 3. 数据库层 (app/models/, app/core/database.py)
 
@@ -150,36 +151,51 @@ fastapi-template/
 - ✅ Pre-commit Git 钩子
 - ✅ 测试覆盖率报告
 
+### 6. 用户个性化设置 (app/models/user_settings.py)
+
+- ✅ 独立 `user_settings` 表保存每位用户的偏好
+- ✅ 默认 LLM 参数：模型、温度、最大 Token
+- ✅ UI 偏好：主题与语言可配置
+- ✅ JSON `settings` 字段，便于扩展更多自定义配置
+- ✅ `GET/PUT /api/v1/users/settings` API 直接读写
+
 ## API 端点概览
 
 ### 认证相关
 - `POST /api/v1/auth/register` - 用户注册
 - `POST /api/v1/auth/login` - 用户登录
-- `POST /api/v1/auth/refresh` - 刷新令牌
 - `GET /api/v1/auth/me` - 获取当前用户信息
-- `PUT /api/v1/auth/password` - 修改密码
+- `PUT /api/v1/auth/me` - 更新当前用户信息
+- `POST /api/v1/auth/reset-password` - 修改密码
 
 ### 用户管理 (需要管理员权限)
 - `GET /api/v1/users` - 获取用户列表 (分页)
 - `GET /api/v1/users/{user_id}` - 获取用户详情
+- `POST /api/v1/users` - 创建用户
 - `PUT /api/v1/users/{user_id}` - 更新用户信息
 - `DELETE /api/v1/users/{user_id}` - 删除用户
 
+### 用户个性化设置
+- `GET /api/v1/users/settings` - 获取当前用户偏好
+- `PUT /api/v1/users/settings` - 更新默认模型/温度/主题/语言
+
 ### 对话系统
 - `POST /api/v1/chat` - 发送消息 (非流式)
-- `POST /api/v1/chat/stream` - 发送消息 (流式)
+- `POST /api/v1/chat/stream` - 发送消息 (SSE 流式)
 - `POST /api/v1/conversations` - 创建会话
 - `GET /api/v1/conversations` - 获取会话列表
 - `GET /api/v1/conversations/{thread_id}` - 获取会话详情
 - `PATCH /api/v1/conversations/{thread_id}` - 更新会话
 - `DELETE /api/v1/conversations/{thread_id}` - 删除会话
+- `POST /api/v1/conversations/{thread_id}/reset` - 重置会话并清空检查点
 - `GET /api/v1/conversations/{thread_id}/messages` - 获取消息历史
+- `POST /api/v1/conversations/{thread_id}/messages/{message_id}/regenerate` - 重新生成助手消息
 - `GET /api/v1/conversations/{thread_id}/state` - 获取会话状态
 - `GET /api/v1/conversations/{thread_id}/checkpoints` - 获取检查点历史
-- `POST /api/v1/conversations/{thread_id}/update-state` - 更新会话状态
 - `GET /api/v1/conversations/{thread_id}/export` - 导出会话
 - `POST /api/v1/conversations/import` - 导入会话
-- `GET /api/v1/search` - 搜索会话和消息
+- `POST /api/v1/conversations/search` - 搜索会话和消息
+- `GET /api/v1/conversations/users/stats` - 获取个人统计
 
 ### 系统管理
 - `GET /health` - 健康检查
@@ -197,9 +213,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 安装依赖
 uv sync
 
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 文件
+# 配置环境变量（参考 README 示例创建 .env 并填写内容）
 ```
 
 ### 2. 数据库迁移
@@ -241,7 +255,7 @@ uv run uvicorn app.main:app --reload
 ### 环境变量 (.env)
 ```bash
 # 数据库
-DATABASE_URL=sqlite+aiosqlite:///./test.db
+DATABASE_URL=sqlite+aiosqlite:///./langgraph_app.db
 
 # JWT 配置
 SECRET_KEY=your-secret-key
@@ -255,7 +269,12 @@ APP_NAME=FastAPI-Template
 DEBUG=true
 
 # LangGraph 配置
-CHECKPOINT_DB_PATH=checkpoints.db
+CHECKPOINT_DB_PATH=./langgraph_app.db
+
+# LangChain / SiliconFlow 模型
+SILICONFLOW_API_KEY=your-api-key
+SILICONFLOW_API_BASE=https://api.siliconflow.cn/v1
+SILICONFLOW_LLM_MODEL=Qwen/Qwen3-8B
 ```
 
 ## 扩展建议
@@ -269,9 +288,9 @@ CHECKPOINT_DB_PATH=checkpoints.db
 6. 编写测试用例
 
 ### 集成新的 LLM 提供商
-1. 在 `app/core/graph.py` 中修改 `chatbot` 节点
-2. 添加相应的环境变量配置
-3. 更新 `pyproject.toml` 添加依赖
+1. 在 `app/sample_agent.py` 中修改 `get_agent()`（或替换为自定义 Agent 图）
+2. 增加对应的环境变量（API Key、Base URL、模型名称等）
+3. 更新 `pyproject.toml` 添加新供应商的 SDK 依赖
 
 ## 最佳实践
 
