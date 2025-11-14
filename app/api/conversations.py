@@ -5,14 +5,14 @@
 """
 
 import uuid
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.deps import CurrentUser
 from app.core.lifespan import get_compiled_graph
 from app.models import Conversation, Message
 from app.schemas import (
@@ -30,15 +30,30 @@ from app.schemas import (
     StateUpdateRequest,
     UserStatsResponse,
 )
+from app.utils.datetime import utc_now
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
+
+
+# ============= 辅助函数 =============
+
+
+async def verify_conversation_ownership(thread_id: str, user_id: int, db: AsyncSession) -> Conversation:
+    """验证会话所有权"""
+    result = await db.execute(
+        select(Conversation).where(Conversation.thread_id == thread_id, Conversation.user_id == user_id)
+    )
+    conversation = result.scalar_one_or_none()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found or access denied")
+    return conversation
 
 
 # ============= 会话管理接口 =============
 
 
 @router.post("", response_model=ConversationResponse)
-async def create_conversation(conv: ConversationCreate, db: AsyncSession = Depends(get_db)):
+async def create_conversation(conv: ConversationCreate, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     创建新会话
 
@@ -51,7 +66,7 @@ async def create_conversation(conv: ConversationCreate, db: AsyncSession = Depen
     """
     conversation = Conversation(
         thread_id=str(uuid.uuid4()),
-        user_id=conv.user_id,
+        user_id=current_user.id,  # 使用当前用户ID
         title=conv.title,
         meta_data=conv.metadata or {},
     )
@@ -72,7 +87,9 @@ async def create_conversation(conv: ConversationCreate, db: AsyncSession = Depen
 
 
 @router.get("", response_model=list[ConversationResponse])
-async def list_conversations(user_id: int, skip: int = 0, limit: int = 20, db: AsyncSession = Depends(get_db)):
+async def list_conversations(
+    current_user: CurrentUser, skip: int = 0, limit: int = 20, db: AsyncSession = Depends(get_db)
+):
     """
     获取用户的会话列表
 
@@ -87,7 +104,7 @@ async def list_conversations(user_id: int, skip: int = 0, limit: int = 20, db: A
     """
     result = await db.execute(
         select(Conversation)
-        .where(Conversation.user_id == user_id, Conversation.is_active == 1)
+        .where(Conversation.user_id == current_user.id, Conversation.is_active == 1)
         .order_by(Conversation.update_time.desc())
         .offset(skip)
         .limit(limit)
@@ -117,7 +134,7 @@ async def list_conversations(user_id: int, skip: int = 0, limit: int = 20, db: A
 
 
 @router.get("/{thread_id}", response_model=ConversationDetailResponse)
-async def get_conversation(thread_id: str, db: AsyncSession = Depends(get_db)):
+async def get_conversation(thread_id: str, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     获取单个会话详情
 
@@ -128,11 +145,8 @@ async def get_conversation(thread_id: str, db: AsyncSession = Depends(get_db)):
     Returns:
         ConversationDetailResponse: 会话详情
     """
-    result = await db.execute(select(Conversation).where(Conversation.thread_id == thread_id))
-    conversation = result.scalar_one_or_none()
-
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    # 验证会话所有权
+    conversation = await verify_conversation_ownership(thread_id, current_user.id, db)
 
     messages_result = await db.execute(
         select(Message).where(Message.thread_id == thread_id).order_by(Message.create_time)
@@ -165,7 +179,9 @@ async def get_conversation(thread_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/{thread_id}")
-async def update_conversation(thread_id: str, update: ConversationUpdate, db: AsyncSession = Depends(get_db)):
+async def update_conversation(
+    thread_id: str, update: ConversationUpdate, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+):
     """
     更新会话信息
 
@@ -177,25 +193,24 @@ async def update_conversation(thread_id: str, update: ConversationUpdate, db: As
     Returns:
         dict: 更新状态
     """
-    result = await db.execute(select(Conversation).where(Conversation.thread_id == thread_id))
-    conversation = result.scalar_one_or_none()
-
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    # 验证会话所有权
+    conversation = await verify_conversation_ownership(thread_id, current_user.id, db)
 
     if update.title is not None:
         conversation.title = update.title
     if update.metadata is not None:
         conversation.meta_data = update.metadata
 
-    conversation.update_time = datetime.utcnow()
+    conversation.update_time = utc_now()
     await db.commit()
 
     return {"status": "updated", "thread_id": thread_id}
 
 
 @router.delete("/{thread_id}")
-async def delete_conversation(thread_id: str, hard_delete: bool = False, db: AsyncSession = Depends(get_db)):
+async def delete_conversation(
+    thread_id: str, current_user: CurrentUser, hard_delete: bool = False, db: AsyncSession = Depends(get_db)
+):
     """
     删除会话（软删除或硬删除）
 
@@ -207,15 +222,21 @@ async def delete_conversation(thread_id: str, hard_delete: bool = False, db: Asy
     Returns:
         dict: 删除状态
     """
-    result = await db.execute(select(Conversation).where(Conversation.thread_id == thread_id))
-    conversation = result.scalar_one_or_none()
-
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    # 验证会话所有权
+    conversation = await verify_conversation_ownership(thread_id, current_user.id, db)
 
     if hard_delete:
         # 硬删除：删除所有相关数据
-        await db.execute(select(Message).where(Message.thread_id == thread_id))
+        # 先删除检查点
+        from app.core.checkpointer import delete_thread_checkpoints
+
+        try:
+            await delete_thread_checkpoints(thread_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete checkpoints: {e}")
+
+        # 删除消息
+        await db.execute(delete(Message).where(Message.thread_id == thread_id))
         await db.delete(conversation)
     else:
         # 软删除
@@ -225,11 +246,61 @@ async def delete_conversation(thread_id: str, hard_delete: bool = False, db: Asy
     return {"status": "deleted", "thread_id": thread_id}
 
 
+@router.post("/{thread_id}/reset")
+async def reset_conversation(thread_id: str, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """
+    重置对话：清除所有检查点和消息记录，但保留会话记录
+
+    重置后，会话将回到初始状态，可以重新开始对话。
+
+    Args:
+        thread_id: 线程ID
+        current_user: 当前用户
+        db: 数据库会话
+
+    Returns:
+        dict: 重置状态
+    """
+    # 验证会话所有权
+    conversation = await verify_conversation_ownership(thread_id, current_user.id, db)
+
+    try:
+        # 1. 删除 LangGraph 检查点
+        from app.core.checkpointer import delete_thread_checkpoints
+
+        await delete_thread_checkpoints(thread_id)
+        logger.info(f"✅ Deleted LangGraph checkpoints for thread: {thread_id}")
+
+        # 2. 删除所有消息记录
+        result = await db.execute(delete(Message).where(Message.thread_id == thread_id))
+        # 获取删除的行数（SQLAlchemy 2.0+ 的 Result 对象有 rowcount 属性）
+        deleted_count = getattr(result, "rowcount", 0)
+        logger.info(f"✅ Deleted {deleted_count} messages for thread: {thread_id}")
+
+        # 3. 更新会话时间戳
+        conversation.update_time = utc_now()
+
+        await db.commit()
+
+        return {
+            "status": "reset",
+            "thread_id": thread_id,
+            "message": f"Conversation reset successfully. Deleted {deleted_count} messages.",
+        }
+
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"❌ Failed to reset conversation {thread_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset conversation: {str(e)}") from e
+
+
 # ============= 消息管理接口 =============
 
 
 @router.get("/{thread_id}/messages", response_model=list[MessageResponse])
-async def get_messages(thread_id: str, skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db)):
+async def get_messages(
+    thread_id: str, current_user: CurrentUser, skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db)
+):
     """
     获取会话消息历史
 
@@ -242,6 +313,9 @@ async def get_messages(thread_id: str, skip: int = 0, limit: int = 50, db: Async
     Returns:
         list[MessageResponse]: 消息列表
     """
+    # 验证会话所有权
+    await verify_conversation_ownership(thread_id, current_user.id, db)
+
     result = await db.execute(
         select(Message)
         .where(Message.thread_id == thread_id)
@@ -267,7 +341,7 @@ async def get_messages(thread_id: str, skip: int = 0, limit: int = 50, db: Async
 
 
 @router.get("/{thread_id}/state", response_model=StateResponse)
-async def get_state(thread_id: str):
+async def get_state(thread_id: str, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     获取会话的 LangGraph 状态
 
@@ -277,7 +351,10 @@ async def get_state(thread_id: str):
     Returns:
         StateResponse: 状态响应
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    # 验证会话所有权
+    await verify_conversation_ownership(thread_id, current_user.id, db)
+
+    config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
     try:
         compiled_graph = get_compiled_graph()
         state = await compiled_graph.aget_state(config)
@@ -306,7 +383,9 @@ async def get_state(thread_id: str):
 
 
 @router.get("/{thread_id}/checkpoints", response_model=CheckpointResponse)
-async def get_checkpoints(thread_id: str, limit: int = 10):
+async def get_checkpoints(
+    thread_id: str, current_user: CurrentUser, limit: int = 10, db: AsyncSession = Depends(get_db)
+):
     """
     获取会话的所有检查点
 
@@ -317,7 +396,10 @@ async def get_checkpoints(thread_id: str, limit: int = 10):
     Returns:
         CheckpointResponse: 检查点响应
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    # 验证会话所有权
+    await verify_conversation_ownership(thread_id, current_user.id, db)
+
+    config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
     try:
         compiled_graph = get_compiled_graph()
         checkpoints = []
@@ -341,7 +423,9 @@ async def get_checkpoints(thread_id: str, limit: int = 10):
 
 
 @router.post("/{thread_id}/update-state")
-async def update_state(thread_id: str, request: StateUpdateRequest):
+async def update_state(
+    thread_id: str, request: StateUpdateRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+):
     """
     更新会话状态
 
@@ -352,7 +436,10 @@ async def update_state(thread_id: str, request: StateUpdateRequest):
     Returns:
         dict: 更新状态
     """
-    config = {"configurable": {"thread_id": thread_id}}
+    # 验证会话所有权
+    await verify_conversation_ownership(thread_id, current_user.id, db)
+
+    config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
 
     try:
         compiled_graph = get_compiled_graph()
@@ -367,7 +454,7 @@ async def update_state(thread_id: str, request: StateUpdateRequest):
 
 
 @router.get("/{thread_id}/export", response_model=ConversationExportResponse)
-async def export_conversation(thread_id: str, db: AsyncSession = Depends(get_db)):
+async def export_conversation(thread_id: str, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     导出会话数据
 
@@ -378,11 +465,8 @@ async def export_conversation(thread_id: str, db: AsyncSession = Depends(get_db)
     Returns:
         ConversationExportResponse: 导出数据
     """
-    result = await db.execute(select(Conversation).where(Conversation.thread_id == thread_id))
-    conversation = result.scalar_one_or_none()
-
-    if not conversation:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    # 验证会话所有权
+    conversation = await verify_conversation_ownership(thread_id, current_user.id, db)
 
     messages_result = await db.execute(
         select(Message).where(Message.thread_id == thread_id).order_by(Message.create_time)
@@ -390,7 +474,7 @@ async def export_conversation(thread_id: str, db: AsyncSession = Depends(get_db)
     messages = messages_result.scalars().all()
 
     # 获取 LangGraph 状态
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
     try:
         compiled_graph = get_compiled_graph()
         state = await compiled_graph.aget_state(config)
@@ -421,7 +505,9 @@ async def export_conversation(thread_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/import")
-async def import_conversation(request: ConversationImportRequest, db: AsyncSession = Depends(get_db)):
+async def import_conversation(
+    request: ConversationImportRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
+):
     """
     导入会话数据
 
@@ -438,7 +524,7 @@ async def import_conversation(request: ConversationImportRequest, db: AsyncSessi
     # 创建会话
     conversation = Conversation(
         thread_id=thread_id,
-        user_id=request.user_id,
+        user_id=current_user.id,  # 使用当前用户ID
         title=data["conversation"]["title"],
         meta_data=data["conversation"].get("metadata", {}),
     )
@@ -458,7 +544,7 @@ async def import_conversation(request: ConversationImportRequest, db: AsyncSessi
 
     # 恢复 LangGraph 状态
     if "state" in data and data["state"]:
-        config = {"configurable": {"thread_id": thread_id}}
+        config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
         try:
             compiled_graph = get_compiled_graph()
             await compiled_graph.aupdate_state(config, data["state"])
@@ -472,7 +558,7 @@ async def import_conversation(request: ConversationImportRequest, db: AsyncSessi
 
 
 @router.post("/search", response_model=SearchResponse)
-async def search_conversations(request: SearchRequest, db: AsyncSession = Depends(get_db)):
+async def search_conversations(request: SearchRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     搜索会话和消息
 
@@ -487,7 +573,7 @@ async def search_conversations(request: SearchRequest, db: AsyncSession = Depend
     result = await db.execute(
         select(Message)
         .join(Conversation, Message.thread_id == Conversation.thread_id)
-        .where(Message.content.like(f"%{request.query}%"), Conversation.user_id == request.user_id)
+        .where(Message.content.like(f"%{request.query}%"), Conversation.user_id == current_user.id)
         .order_by(Message.create_time.desc())
         .offset(request.skip)
         .limit(request.limit)
@@ -516,8 +602,8 @@ async def search_conversations(request: SearchRequest, db: AsyncSession = Depend
 # ============= 统计接口 =============
 
 
-@router.get("/users/{user_id}/stats", response_model=UserStatsResponse)
-async def get_user_stats(user_id: int, db: AsyncSession = Depends(get_db)):
+@router.get("/users/stats", response_model=UserStatsResponse)
+async def get_user_stats(current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     获取用户统计信息
 
@@ -530,7 +616,7 @@ async def get_user_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     """
     # 总会话数
     conv_result = await db.execute(
-        select(func.count(Conversation.id)).where(Conversation.user_id == user_id, Conversation.is_active == 1)
+        select(func.count(Conversation.id)).where(Conversation.user_id == current_user.id, Conversation.is_active == 1)
     )
     total_conversations = conv_result.scalar() or 0
 
@@ -538,21 +624,21 @@ async def get_user_stats(user_id: int, db: AsyncSession = Depends(get_db)):
     msg_result = await db.execute(
         select(func.count(Message.id))
         .join(Conversation, Message.thread_id == Conversation.thread_id)
-        .where(Conversation.user_id == user_id)
+        .where(Conversation.user_id == current_user.id)
     )
     total_messages = msg_result.scalar() or 0
 
     # 最近会话
     recent_result = await db.execute(
         select(Conversation)
-        .where(Conversation.user_id == user_id, Conversation.is_active == 1)
+        .where(Conversation.user_id == current_user.id, Conversation.is_active == 1)
         .order_by(Conversation.update_time.desc())
         .limit(5)
     )
     recent_conversations = recent_result.scalars().all()
 
     return UserStatsResponse(
-        user_id=str(user_id),
+        user_id=str(current_user.id),
         total_conversations=total_conversations,
         total_messages=total_messages,
         recent_conversations=[

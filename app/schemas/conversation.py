@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConversationCreate(BaseModel):
@@ -28,6 +28,8 @@ class ConversationUpdate(BaseModel):
 class ConversationResponse(BaseModel):
     """会话响应"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int = Field(..., description="会话ID")
     thread_id: str = Field(..., description="线程ID")
     user_id: int = Field(..., description="用户ID")
@@ -36,9 +38,6 @@ class ConversationResponse(BaseModel):
     created_at: datetime = Field(..., description="创建时间")
     updated_at: datetime = Field(..., description="更新时间")
     message_count: int = Field(default=0, description="消息数量")
-
-    class Config:
-        from_attributes = True
 
 
 class ConversationDetailResponse(BaseModel):

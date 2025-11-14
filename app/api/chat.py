@@ -6,25 +6,26 @@
 
 import json
 import uuid
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import HumanMessage
+from langchain.messages import HumanMessage
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal, get_db
+from app.core.deps import CurrentUser
 from app.core.lifespan import get_compiled_graph
 from app.models import Conversation, Message
 from app.schemas import ChatRequest, ChatResponse
+from app.utils.datetime import utc_now
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(request: ChatRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     异步对话接口 (非流式)
 
@@ -42,21 +43,23 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         thread_id = str(uuid.uuid4())
         conversation = Conversation(
             thread_id=thread_id,
-            user_id=request.user_id,
+            user_id=current_user.id,  # 使用当前用户ID
             title=request.message[:50] if len(request.message) > 50 else request.message,
             meta_data=request.metadata or {},
         )
         db.add(conversation)
         await db.commit()
     else:
-        # 验证会话是否存在
-        result = await db.execute(select(Conversation).where(Conversation.thread_id == thread_id))
+        # 验证会话是否存在且属于当前用户
+        result = await db.execute(
+            select(Conversation).where(Conversation.thread_id == thread_id, Conversation.user_id == current_user.id)
+        )
         conv = result.scalar_one_or_none()
         if not conv:
-            raise HTTPException(status_code=404, detail="Conversation not found")
+            raise HTTPException(status_code=404, detail="Conversation not found or access denied")
         conversation = conv
 
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
 
     try:
         # 保存用户消息
@@ -70,10 +73,10 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         await db.commit()
 
         # 执行图（异步）
-        start_time = datetime.utcnow()
+        start_time = utc_now()
         compiled_graph = get_compiled_graph()
         graph_result = await compiled_graph.ainvoke({"messages": [HumanMessage(content=request.message)]}, config)
-        duration = (datetime.utcnow() - start_time).total_seconds() * 1000
+        duration = (utc_now() - start_time).total_seconds() * 1000
 
         # 保存所有新产生的消息（不仅仅是最后一条）
         # graph_result["messages"] 包含所有消息，包括用户消息和所有 agent 产生的消息
@@ -116,7 +119,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         result_conv = await db.execute(select(Conversation).where(Conversation.thread_id == thread_id))
         conv_update = result_conv.scalar_one_or_none()
         if conv_update:
-            conv_update.update_time = datetime.utcnow()
+            conv_update.update_time = utc_now()
 
         await db.commit()
 
@@ -128,12 +131,13 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     异步流式对话接口
 
     Args:
         request: 对话请求
+        current_user: 当前登录用户
         db: 数据库会话
 
     Returns:
@@ -144,12 +148,20 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     if not request.thread_id:
         conversation = Conversation(
             thread_id=thread_id,
-            user_id=request.user_id,
+            user_id=current_user.id,  # 使用当前用户ID
             title=request.message[:50] if len(request.message) > 50 else request.message,
             meta_data=request.metadata or {},
         )
         db.add(conversation)
         await db.commit()
+    else:
+        # 验证会话是否属于当前用户
+        result = await db.execute(
+            select(Conversation).where(Conversation.thread_id == thread_id, Conversation.user_id == current_user.id)
+        )
+        conv = result.scalar_one_or_none()
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found or access denied")
 
     # 保存用户消息
     user_message = Message(
@@ -161,7 +173,7 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     db.add(user_message)
     await db.commit()
 
-    config = {"configurable": {"thread_id": thread_id}}
+    config = {"configurable": {"thread_id": thread_id, "user_id": current_user.id}}
 
     async def event_generator():
         all_messages = []
@@ -213,7 +225,7 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                     result = await new_session.execute(select(Conversation).where(Conversation.thread_id == thread_id))
                     conversation = result.scalar_one_or_none()
                     if conversation:
-                        conversation.update_time = datetime.utcnow()
+                        conversation.update_time = utc_now()
 
                     await new_session.commit()
 

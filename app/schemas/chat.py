@@ -7,7 +7,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ChatRequest(BaseModel):
@@ -15,8 +15,8 @@ class ChatRequest(BaseModel):
 
     message: str = Field(..., description="用户消息")
     thread_id: str | None = Field(None, description="会话线程ID，不提供则创建新会话")
-    user_id: int = Field(..., description="用户ID")
     metadata: dict[str, Any] = Field(default_factory=dict, description="元数据")
+    # user_id 从认证中获取，不再需要在请求中提供
 
 
 class ChatResponse(BaseModel):
@@ -30,11 +30,10 @@ class ChatResponse(BaseModel):
 class MessageResponse(BaseModel):
     """消息响应"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int = Field(..., description="消息ID")
     role: str = Field(..., description="角色(user/assistant/system)")
     content: str = Field(..., description="消息内容")
     metadata: dict[str, Any] = Field(default_factory=dict, description="元数据")
     created_at: datetime = Field(..., description="创建时间")
-
-    class Config:
-        from_attributes = True

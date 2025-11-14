@@ -6,7 +6,7 @@ LangGraph 图定义
 
 import asyncio
 
-from langchain_core.messages import AIMessage
+from langchain.messages import AIMessage
 from langgraph.graph import END, MessagesState, StateGraph
 
 

@@ -63,3 +63,24 @@ def get_checkpointer() -> AsyncSqliteSaver:
     if checkpointer is None:
         raise RuntimeError("Checkpointer not initialized. Call init_checkpointer() first.")
     return checkpointer
+
+
+async def delete_thread_checkpoints(thread_id: str) -> None:
+    """
+    删除指定线程的所有检查点
+
+    Args:
+        thread_id: 线程ID
+
+    Raises:
+        RuntimeError: 如果检查点保存器未初始化
+    """
+    if checkpointer is None:
+        raise RuntimeError("Checkpointer not initialized. Call init_checkpointer() first.")
+
+    try:
+        await checkpointer.adelete_thread({"configurable": {"thread_id": thread_id}})
+        logger.info(f"✅ Deleted checkpoints for thread: {thread_id}")
+    except Exception as e:
+        logger.error(f"❌ Failed to delete checkpoints for thread {thread_id}: {e}")
+        raise
