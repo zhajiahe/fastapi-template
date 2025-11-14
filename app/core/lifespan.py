@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from loguru import logger
 
 from app.core.checkpointer import close_checkpointer, init_checkpointer
+from app.core.config import settings
 from app.core.database import close_db, init_db
 from app.core.graph import create_graph
 
@@ -44,8 +45,8 @@ async def lifespan(app: FastAPI):
         await init_db()
         logger.info("✅ 数据库初始化成功")
 
-        # 初始化 LangGraph checkpointer
-        checkpointer = await init_checkpointer()
+        # 初始化 LangGraph checkpointer（使用配置中的路径）
+        checkpointer = await init_checkpointer(settings.CHECKPOINT_DB_PATH)
 
         # 编译 LangGraph 图
         compiled_graph = create_graph().compile(checkpointer=checkpointer)

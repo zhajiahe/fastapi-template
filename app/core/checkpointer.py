@@ -7,8 +7,9 @@ LangGraph 检查点管理
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from loguru import logger
 
-# 全局 checkpointer 实例
+# 全局 checkpointer 实例和上下文管理器
 checkpointer: AsyncSqliteSaver | None = None
+_checkpointer_cm = None
 
 
 async def init_checkpointer(db_path: str = "checkpoints.db") -> AsyncSqliteSaver:
@@ -21,12 +22,12 @@ async def init_checkpointer(db_path: str = "checkpoints.db") -> AsyncSqliteSaver
     Returns:
         AsyncSqliteSaver: 检查点保存器实例
     """
-    global checkpointer
+    global checkpointer, _checkpointer_cm
 
     try:
-        # AsyncSqliteSaver.from_conn_string returns a context manager
-        # We need to enter it to get the actual saver
-        checkpointer = await AsyncSqliteSaver.from_conn_string(db_path).__aenter__()
+        # 创建上下文管理器并进入
+        _checkpointer_cm = AsyncSqliteSaver.from_conn_string(db_path)
+        checkpointer = await _checkpointer_cm.__aenter__()
         logger.info(f"✅ Checkpointer initialized: {db_path}")
         return checkpointer
     except Exception as e:
@@ -36,12 +37,14 @@ async def init_checkpointer(db_path: str = "checkpoints.db") -> AsyncSqliteSaver
 
 async def close_checkpointer():
     """关闭检查点保存器连接"""
-    global checkpointer
+    global checkpointer, _checkpointer_cm
 
-    if checkpointer:
+    if checkpointer and _checkpointer_cm:
         try:
-            # Call __aexit__ to properly close the context manager
-            await checkpointer.__aexit__(None, None, None)
+            # 正确退出上下文管理器
+            await _checkpointer_cm.__aexit__(None, None, None)
+            checkpointer = None
+            _checkpointer_cm = None
             logger.info("✅ Checkpointer connection closed")
         except Exception as e:
             logger.error(f"❌ Failed to close checkpointer: {e}")

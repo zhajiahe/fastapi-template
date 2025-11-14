@@ -19,7 +19,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 刷新令牌过期时间（天）
 
     # 数据库配置
-    DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./langgraph_app.db"
+
+    # LangGraph Checkpointer 配置
+    # 使用与主数据库相同的文件
+    CHECKPOINT_DB_PATH: str = "./langgraph_app.db"
 
     # 应用配置
     APP_NAME: str = "FastAPI Template"
