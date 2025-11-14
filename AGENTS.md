@@ -116,6 +116,7 @@ fastapi-template/
 ### 2. LangGraph 对话系统 (app/api/chat.py, app/core/graph.py)
 
 - ✅ 异步对话接口（非流式 + SSE 流式）
+- ✅ 对话停止功能（支持流式和非流式对话的中途停止）
 - ✅ 会话生命周期（创建/查询/更新/删除/重置/硬删除）
 - ✅ 消息历史与助手回复再生成
 - ✅ 状态持久化（AsyncSqliteSaver）与时间旅行检查点
@@ -182,6 +183,7 @@ fastapi-template/
 ### 对话系统
 - `POST /api/v1/chat` - 发送消息 (非流式)
 - `POST /api/v1/chat/stream` - 发送消息 (SSE 流式)
+- `POST /api/v1/chat/stop` - 停止正在进行的对话（流式/非流式）
 - `POST /api/v1/conversations` - 创建会话
 - `GET /api/v1/conversations` - 获取会话列表
 - `GET /api/v1/conversations/{thread_id}` - 获取会话详情

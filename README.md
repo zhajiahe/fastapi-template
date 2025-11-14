@@ -194,6 +194,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 集成了 LangGraph 对话流程编排系统：
 
 - **异步对话接口**：支持非流式响应与 SSE 流式输出
+- **对话停止功能**：支持流式和非流式对话的中途停止，使用任务管理器跟踪和管理正在运行的任务
 - **会话生命周期**：创建、查询、更新、删除、重置、硬删除
 - **消息操作**：完整的消息历史，并支持重新生成指定助手回复
 - **状态持久化**：使用 AsyncSqliteSaver 保留图状态，随时恢复
@@ -268,6 +269,7 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 - `POST /api/v1/chat` - 发送消息（非流式）
 - `POST /api/v1/chat/stream` - 发送消息（流式 SSE）
+- `POST /api/v1/chat/stop` - 停止正在进行的对话（流式/非流式）
 - `POST /api/v1/conversations` - 创建会话
 - `GET /api/v1/conversations` - 获取会话列表
 - `GET /api/v1/conversations/{thread_id}` - 获取会话详情
