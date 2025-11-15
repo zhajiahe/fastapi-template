@@ -239,7 +239,7 @@ async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Async
                 if await task_manager.is_stopped(thread_id):
                     stopped = True
                     logger.info(f"Stream stopped by user for thread_id: {thread_id}")
-                    yield f"data: {json.dumps({'stopped': True, 'thread_id': thread_id})}\n\n"
+                    yield f"data: {json.dumps({'stopped': True, 'thread_id': thread_id}, ensure_ascii=False)}\n\n"
                     break
 
                 # 处理 updates 模式的事件
@@ -256,7 +256,8 @@ async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Async
                                     if len(new_content) > len(assistant_content):
                                         chunk = new_content[len(assistant_content) :]
                                         assistant_content = new_content
-                                        yield f"data: {json.dumps({'content': chunk, 'thread_id': thread_id})}\n\n"
+                                        # 使用ensure_ascii=False确保中文正确编码
+                                        yield f"data: {json.dumps({'content': chunk, 'thread_id': thread_id}, ensure_ascii=False)}\n\n"
                                     all_messages.append(last_message)
 
             # 如果被停止，不保存消息
@@ -289,14 +290,14 @@ async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Async
 
                         await new_session.commit()
 
-            yield f"data: {json.dumps({'done': True})}\n\n"
+            yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
 
         except asyncio.CancelledError:
             logger.info(f"Stream cancelled for thread_id: {thread_id}")
-            yield f"data: {json.dumps({'stopped': True, 'thread_id': thread_id})}\n\n"
+            yield f"data: {json.dumps({'stopped': True, 'thread_id': thread_id}, ensure_ascii=False)}\n\n"
         except Exception as e:
             logger.error(f"Stream error: {e}")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
         finally:
             # 确保注销任务
             await task_manager.unregister_task(thread_id)

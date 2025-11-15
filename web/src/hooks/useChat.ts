@@ -89,8 +89,13 @@ export const useChat = () => {
                     accumulatedContent += parsed.content;
                     updateMessage(assistantMessageId, accumulatedContent);
                   }
+                  if (parsed.stopped) {
+                    // 流式被停止
+                    break;
+                  }
                 } catch (e) {
-                  // 忽略解析错误
+                  // 忽略解析错误，但记录日志以便调试
+                  console.warn('Failed to parse SSE data:', data, e);
                 }
               }
             }
