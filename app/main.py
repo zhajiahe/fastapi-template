@@ -4,8 +4,11 @@ FastAPI 应用主入口
 提供应用配置、路由注册和中间件设置
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from app.api.chat import router as chat_router
@@ -91,6 +94,14 @@ app.include_router(chat_router, prefix="/api/v1")
 
 # 注册会话管理路由
 app.include_router(conversations_router, prefix="/api/v1")
+
+# 挂载前端静态文件
+web_dist_path = Path(__file__).parent.parent / "web" / "dist"
+if web_dist_path.exists():
+    app.mount("/web", StaticFiles(directory=str(web_dist_path), html=True), name="web")
+    logger.info(f"Frontend mounted at /web from {web_dist_path}")
+else:
+    logger.warning(f"Frontend dist directory not found at {web_dist_path}")
 
 
 if __name__ == "__main__":

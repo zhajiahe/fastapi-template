@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain.messages import HumanMessage
+from langchain_core.messages.base import BaseMessage
 from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -31,6 +32,10 @@ class StopRequest(BaseModel):
     """停止请求"""
 
     thread_id: str = Body(..., description="会话线程ID")
+
+
+def get_role(msg: BaseMessage) -> str:
+    return str(msg.type)
 
 
 @router.post("", response_model=ChatResponse)
@@ -114,29 +119,13 @@ async def chat(request: ChatRequest, current_user: CurrentUser, db: AsyncSession
         # 从第二条消息开始保存（第一条是用户消息，已经保存过了）
         for msg in result_messages[1:]:
             # 确定消息类型
-            msg_type = type(msg).__name__
-            if msg_type == "AIMessage":
-                role = "assistant"
-            elif msg_type == "HumanMessage":
-                role = "user"
-            elif msg_type == "SystemMessage":
-                role = "system"
-            elif msg_type == "ToolMessage":
-                role = "tool"
-            elif msg_type == "FunctionMessage":
-                role = "function"
-            else:
-                role = msg_type.lower().replace("message", "")
-
+            role = get_role(msg)
             # 保存消息
             message = Message(
                 thread_id=thread_id,
                 role=role,
                 content=str(msg.content) if msg.content else "",
-                meta_data={
-                    "type": msg_type,
-                    **(msg.additional_kwargs if hasattr(msg, "additional_kwargs") else {}),
-                },
+                meta_data=msg.additional_kwargs,
             )
             db.add(message)
 
@@ -246,29 +235,12 @@ async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Async
                 async with AsyncSessionLocal() as new_session:
                     # 从第二条消息开始保存
                     for msg in all_messages[1:]:
-                        # 确定消息类型
-                        msg_type = type(msg).__name__
-                        if msg_type == "AIMessage":
-                            role = "assistant"
-                        elif msg_type == "HumanMessage":
-                            role = "user"
-                        elif msg_type == "SystemMessage":
-                            role = "system"
-                        elif msg_type == "ToolMessage":
-                            role = "tool"
-                        elif msg_type == "FunctionMessage":
-                            role = "function"
-                        else:
-                            role = msg_type.lower().replace("message", "")
-
+                        role = get_role(msg)
                         message = Message(
                             thread_id=thread_id,
                             role=role,
                             content=str(msg.content) if msg.content else "",
-                            meta_data={
-                                "type": msg_type,
-                                **(msg.additional_kwargs if hasattr(msg, "additional_kwargs") else {}),
-                            },
+                            meta_data=msg.additional_kwargs,
                         )
                         new_session.add(message)
 

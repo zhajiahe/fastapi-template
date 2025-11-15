@@ -5,6 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
+node_modules/
+web/node_modules/
 
 # Distribution / packaging
 .Python
@@ -219,3 +221,42 @@ __marimo__/
 *db
 *-wal
 *-shm
+
+# ==========================================
+# Frontend (Node.js / React / Vite)
+# ==========================================
+
+# Dependencies
+node_modules/
+web/node_modules/
+
+# Build outputs
+web/dist/
+web/dist-ssr/
+
+# Logs
+web/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment files (frontend)
+web/.env
+web/.env.local
+web/.env.production.local
+web/.env.development.local
+web/.env.test.local
+*.local

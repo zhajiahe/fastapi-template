@@ -545,7 +545,7 @@ async def get_checkpoints(
 # ============= 导出/导入接口 =============
 
 
-@router.get("/{thread_id}/export", response_model=ConversationExportResponse)
+@router.get("/{thread_id}/export", response_model=ConversationExportResponse, include_in_schema=False)
 async def export_conversation(thread_id: str, current_user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """
     导出会话数据
@@ -596,7 +596,7 @@ async def export_conversation(thread_id: str, current_user: CurrentUser, db: Asy
     )
 
 
-@router.post("/import")
+@router.post("/import", include_in_schema=False)
 async def import_conversation(
     request: ConversationImportRequest, current_user: CurrentUser, db: AsyncSession = Depends(get_db)
 ):
