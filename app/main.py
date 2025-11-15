@@ -6,8 +6,9 @@ FastAPI 应用主入口
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
@@ -98,7 +99,18 @@ app.include_router(conversations_router, prefix="/api/v1")
 # 挂载前端静态文件
 web_dist_path = Path(__file__).parent.parent / "web" / "dist"
 if web_dist_path.exists():
-    app.mount("/web", StaticFiles(directory=str(web_dist_path), html=True), name="web")
+    # 挂载静态资源
+    app.mount("/web/assets", StaticFiles(directory=str(web_dist_path / "assets")), name="web_assets")
+
+    # SPA 路由处理 - 所有 /web/* 路径都返回 index.html
+    @app.get("/web/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """处理 SPA 路由，所有路径都返回 index.html"""
+        index_path = web_dist_path / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return {"detail": "Frontend not found"}
+
     logger.info(f"Frontend mounted at /web from {web_dist_path}")
 else:
     logger.warning(f"Frontend dist directory not found at {web_dist_path}")

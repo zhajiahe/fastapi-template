@@ -64,7 +64,26 @@ export const useConversations = () => {
         const response = await request.get<MessageResponse[]>(
           `/conversations/${conversation.thread_id}/messages`
         );
-        setMessages(response.data);
+        // 将 MessageResponse 转换为 Message 类型，并按创建时间排序（如果时间相同，则按ID排序）
+        // 规范化角色：将 'ai' 映射为 'assistant' 以兼容旧数据
+        const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
+          if (role === 'ai' || role === 'assistant') return 'assistant';
+          if (role === 'human' || role === 'user') return 'user';
+          return role as 'user' | 'assistant' | 'system';
+        };
+        const messages = response.data
+          .map(msg => ({
+            id: msg.id,
+            role: normalizeRole(msg.role),
+            content: msg.content,
+            created_at: msg.created_at,
+          }))
+          .sort((a, b) => {
+            const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            // 如果时间相同，按ID排序（确保顺序稳定）
+            return timeDiff !== 0 ? timeDiff : a.id - b.id;
+          });
+        setMessages(messages);
       } catch (error) {
         console.error('Failed to load messages:', error);
       } finally {

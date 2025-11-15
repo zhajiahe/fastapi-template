@@ -23,21 +23,24 @@ export const useChat = () => {
       setIsSending(true);
 
       // 添加用户消息
+      const userMessageTime = new Date().toISOString();
       const userMessage = {
         id: Date.now(),
         role: 'user' as const,
         content,
-        created_at: new Date().toISOString(),
+        created_at: userMessageTime,
       };
       addMessage(userMessage);
 
       // 创建一个临时的助手消息用于流式更新
+      // 确保助手消息的时间戳晚于用户消息
       const assistantMessageId = Date.now() + 1;
+      const assistantMessageTime = new Date(Date.now() + 1).toISOString();
       const assistantMessage = {
         id: assistantMessageId,
         role: 'assistant' as const,
         content: '',
-        created_at: new Date().toISOString(),
+        created_at: assistantMessageTime,
         isStreaming: true,
       };
       addMessage(assistantMessage);
@@ -94,6 +97,32 @@ export const useChat = () => {
           }
         }
 
+        // 流式完成后，重新加载消息以获取实际的数据库ID
+        if (currentConversation?.thread_id) {
+          const messagesResponse = await request.get<MessageResponse[]>(
+            `/conversations/${currentConversation.thread_id}/messages`
+          );
+          if (messagesResponse.data) {
+            const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
+              if (role === 'ai' || role === 'assistant') return 'assistant';
+              if (role === 'human' || role === 'user') return 'user';
+              return role as 'user' | 'assistant' | 'system';
+            };
+            const messages = messagesResponse.data
+              .map(msg => ({
+                id: msg.id,
+                role: normalizeRole(msg.role),
+                content: msg.content,
+                created_at: msg.created_at,
+              }))
+              .sort((a, b) => {
+                const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                return timeDiff !== 0 ? timeDiff : a.id - b.id;
+              });
+            useChatStore.getState().setMessages(messages);
+          }
+        }
+
         setStreamingMessageId(null);
       } catch (error) {
         console.error('Failed to send message:', error);
@@ -139,6 +168,30 @@ export const useChat = () => {
           created_at: new Date().toISOString(),
         };
         addMessage(assistantMessage);
+
+        // 重新加载消息以获取实际的数据库ID
+        if (data.thread_id) {
+          const messagesResponse = await request.get<MessageResponse[]>(`/conversations/${data.thread_id}/messages`);
+          if (messagesResponse.data) {
+            const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
+              if (role === 'ai' || role === 'assistant') return 'assistant';
+              if (role === 'human' || role === 'user') return 'user';
+              return role as 'user' | 'assistant' | 'system';
+            };
+            const messages = messagesResponse.data
+              .map(msg => ({
+                id: msg.id,
+                role: normalizeRole(msg.role),
+                content: msg.content,
+                created_at: msg.created_at,
+              }))
+              .sort((a, b) => {
+                const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                return timeDiff !== 0 ? timeDiff : a.id - b.id;
+              });
+            useChatStore.getState().setMessages(messages);
+          }
+        }
       } catch (error) {
         console.error('Failed to send message:', error);
         const errorMessage = {

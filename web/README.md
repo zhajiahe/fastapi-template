@@ -1,4 +1,4 @@
-# AI 聊天助手 - 前端应用
+# AI Agent - 前端应用
 
 这是一个基于 React + TypeScript + Vite 构建的现代化 AI 聊天应用前端。
 

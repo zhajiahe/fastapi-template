@@ -26,11 +26,18 @@ export const Login = () => {
       if (response.data.success && response.data.data) {
         const { id, nickname, access_token, refresh_token } = response.data.data;
 
-        // 获取完整用户信息
+        // 先保存 token，然后获取完整用户信息
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+
         const userResponse = await request.get('/auth/me');
 
-        setAuth(userResponse.data.data, access_token, refresh_token);
-        navigate('/chat');
+        if (userResponse.data.success && userResponse.data.data) {
+          setAuth(userResponse.data.data, access_token, refresh_token);
+          navigate('/chat');
+        } else {
+          setError('获取用户信息失败');
+        }
       } else {
         setError(response.data.msg || '登录失败');
       }
@@ -49,7 +56,7 @@ export const Login = () => {
             登录
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            登录到 AI 聊天助手
+            登录到 AI Agent
           </p>
         </div>
 

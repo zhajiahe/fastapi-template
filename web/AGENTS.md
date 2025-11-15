@@ -7,3 +7,6 @@ npx orval --input http://localhost:8000/openapi.json --output ./src/api
 
 # 编写文档
 未经允许不要自行编写文档
+
+# 测试文件
+你生成的测试文件测试结束后记得删除

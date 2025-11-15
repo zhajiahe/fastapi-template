@@ -1,16 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Chat } from '@/pages/Chat';
+import { Settings } from '@/pages/Settings';
 
 function App() {
   const { initAuth, isAuthenticated } = useAuthStore();
+  const initTheme = useThemeStore((state) => state.initTheme);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     initAuth();
-  }, [initAuth]);
+    initTheme();
+    setIsInitialized(true);
+  }, [initAuth, initTheme]);
+
+  // 等待初始化完成
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white dark:bg-gray-900">
+        <div className="text-gray-600 dark:text-gray-400">加载中...</div>
+      </div>
+    );
+  }
 
   return (
     <BrowserRouter basename="/web">
@@ -21,6 +36,12 @@ function App() {
           path="/chat"
           element={
             isAuthenticated ? <Chat /> : <Navigate to="/login" replace />
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            isAuthenticated ? <Settings /> : <Navigate to="/login" replace />
           }
         />
         <Route
