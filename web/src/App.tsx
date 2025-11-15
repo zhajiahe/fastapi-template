@@ -6,6 +6,7 @@ import { Login } from '@/pages/Login';
 import { Register } from '@/pages/Register';
 import { Chat } from '@/pages/Chat';
 import { Settings } from '@/pages/Settings';
+import { Toaster } from '@/components/ui/toaster';
 
 function App() {
   const { initAuth, isAuthenticated } = useAuthStore();
@@ -55,6 +56,7 @@ function App() {
           }
         />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

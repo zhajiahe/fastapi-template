@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useChatStore } from '@/stores/chatStore';
 import request from '@/utils/request';
 import { ChatRequest, MessageResponse } from '@/api/aPIDoc';
+import { useUserSettings } from './useUserSettings';
 
 export const useChat = () => {
   const {
@@ -13,6 +14,7 @@ export const useChat = () => {
     isSending,
   } = useChatStore();
 
+  const { settings: userSettings } = useUserSettings();
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
 
   // 发送消息（流式）
@@ -92,15 +94,19 @@ export const useChat = () => {
                     accumulatedContent += parsed.content;
                     updateMessage(assistantMessageId, accumulatedContent);
                   } else if (parsed.type === 'tool_start') {
-                    // 工具调用开始
-                    const toolInfo = `\n\n🔧 **调用工具**: ${parsed.tool_name}\n📥 **输入**: ${JSON.stringify(parsed.tool_input, null, 2)}\n`;
-                    accumulatedContent += toolInfo;
-                    updateMessage(assistantMessageId, accumulatedContent);
+                    // 工具调用开始 - 根据用户设置决定是否显示
+                    if (userSettings.show_tool_calls) {
+                      const toolInfo = `\n\n🔧 **调用工具**: ${parsed.tool_name}\n📥 **输入**: ${JSON.stringify(parsed.tool_input, null, 2)}\n`;
+                      accumulatedContent += toolInfo;
+                      updateMessage(assistantMessageId, accumulatedContent);
+                    }
                   } else if (parsed.type === 'tool_end') {
-                    // 工具调用结束
-                    const toolResult = `\n✅ **结果**: ${parsed.tool_output}\n\n`;
-                    accumulatedContent += toolResult;
-                    updateMessage(assistantMessageId, accumulatedContent);
+                    // 工具调用结束 - 根据用户设置决定是否显示
+                    if (userSettings.show_tool_calls) {
+                      const toolResult = `\n✅ **结果**: ${parsed.tool_output}\n\n`;
+                      accumulatedContent += toolResult;
+                      updateMessage(assistantMessageId, accumulatedContent);
+                    }
                   } else if (parsed.content) {
                     // 兼容旧格式（没有type字段）
                     accumulatedContent += parsed.content;
@@ -156,7 +162,7 @@ export const useChat = () => {
         setIsSending(false);
       }
     },
-    [currentConversation, isSending, addMessage, updateMessage, setIsSending]
+    [currentConversation, isSending, addMessage, updateMessage, setIsSending, userSettings]
   );
 
   // 发送消息（非流式）

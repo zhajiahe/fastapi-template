@@ -5,16 +5,22 @@ import request from '@/utils/request';
 import { UserSettingsResponse, UserSettingsUpdate, PasswordChange } from '@/api/aPIDoc';
 import { ArrowLeftIcon, SaveIcon } from 'lucide-react';
 import { UserStats } from '@/components/UserStats';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { Separator } from '@/components/ui/separator';
 
 export const Settings = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthStore();
+  const { toast } = useToast();
 
   const [settings, setSettings] = useState<UserSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -57,7 +63,11 @@ export const Settings = () => {
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
-      setError('加载设置失败');
+      toast({
+        title: '加载失败',
+        description: '加载设置失败，请稍后重试',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -66,22 +76,30 @@ export const Settings = () => {
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
-      setError('');
-      setSuccess('');
 
+      const currentSettings = settings?.settings || {};
       const updateData: UserSettingsUpdate = {
         default_model: formData.default_model || null,
         default_temperature: formData.default_temperature,
         default_max_tokens: formData.default_max_tokens,
         theme: formData.theme || null,
         language: formData.language || null,
+        settings: currentSettings,
       };
 
       await request.put('/users/settings', updateData);
-      setSuccess('设置保存成功');
-      setTimeout(() => setSuccess(''), 3000);
+      toast({
+        title: '保存成功',
+        description: '设置已保存',
+      });
+      // 重新加载设置以更新本地状态
+      await loadSettings();
     } catch (err: any) {
-      setError(err.response?.data?.msg || '保存设置失败');
+      toast({
+        title: '保存失败',
+        description: err.response?.data?.msg || '保存设置失败',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -89,16 +107,22 @@ export const Settings = () => {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
     if (passwordData.new_password !== passwordData.confirm_password) {
-      setError('两次输入的密码不一致');
+      toast({
+        title: '验证失败',
+        description: '两次输入的密码不一致',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (passwordData.new_password.length < 6) {
-      setError('新密码长度至少为 6 位');
+      toast({
+        title: '验证失败',
+        description: '新密码长度至少为 6 位',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -109,11 +133,17 @@ export const Settings = () => {
         new_password: passwordData.new_password,
       };
       await request.post('/auth/reset-password', data);
-      setSuccess('密码修改成功');
+      toast({
+        title: '修改成功',
+        description: '密码已修改',
+      });
       setPasswordData({ old_password: '', new_password: '', confirm_password: '' });
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.msg || '修改密码失败');
+      toast({
+        title: '修改失败',
+        description: err.response?.data?.msg || '修改密码失败',
+        variant: 'destructive',
+      });
     } finally {
       setSaving(false);
     }
@@ -121,85 +151,78 @@ export const Settings = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">加载中...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">加载中...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-background py-8">
+      <div className="max-w-4xl mx-auto px-4 space-y-6">
         {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <Link
-            to="/chat"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeftIcon size={20} />
-            <span>返回聊天</span>
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900">设置</h1>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" asChild>
+            <Link to="/chat">
+              <ArrowLeftIcon size={20} className="mr-2" />
+              返回聊天
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold">设置</h1>
         </div>
-
-        {error && (
-          <div className="mb-4 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-4 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded">
-            {success}
-          </div>
-        )}
 
         {/* 用户统计 */}
         <UserStats />
 
         {/* 用户信息 */}
-        <div className="bg-white rounded-lg shadow p-6 my-6">
-          <h2 className="text-lg font-semibold mb-4">用户信息</h2>
-          <div className="space-y-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>用户信息</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div>
-              <label className="text-sm text-gray-600">用户名</label>
-              <div className="mt-1 text-gray-900">{user?.username}</div>
+              <Label className="text-muted-foreground">用户名</Label>
+              <div className="mt-1">{user?.username}</div>
             </div>
+            <Separator />
             <div>
-              <label className="text-sm text-gray-600">昵称</label>
-              <div className="mt-1 text-gray-900">{user?.nickname}</div>
+              <Label className="text-muted-foreground">昵称</Label>
+              <div className="mt-1">{user?.nickname}</div>
             </div>
+            <Separator />
             <div>
-              <label className="text-sm text-gray-600">邮箱</label>
-              <div className="mt-1 text-gray-900">{user?.email}</div>
+              <Label className="text-muted-foreground">邮箱</Label>
+              <div className="mt-1">{user?.email}</div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* AI 设置 */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">AI 设置</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                默认模型
-              </label>
-              <input
+        <Card>
+          <CardHeader>
+            <CardTitle>AI 设置</CardTitle>
+            <CardDescription>配置默认的 AI 模型参数</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="default_model">默认模型</Label>
+              <Input
+                id="default_model"
                 type="text"
                 value={formData.default_model}
                 onChange={(e) =>
                   setFormData({ ...formData, default_model: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 placeholder="例如: Qwen/Qwen3-8B"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-2">
+              <Label htmlFor="temperature">
                 温度 (Temperature): {formData.default_temperature}
-              </label>
+              </Label>
               <input
+                id="temperature"
                 type="range"
                 min="0"
                 max="2"
@@ -213,18 +236,17 @@ export const Settings = () => {
                 }
                 className="w-full"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>精确 (0)</span>
                 <span>平衡 (1)</span>
                 <span>创造 (2)</span>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                最大 Token 数
-              </label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="max_tokens">最大 Token 数</Label>
+              <Input
+                id="max_tokens"
                 type="number"
                 value={formData.default_max_tokens}
                 onChange={(e) =>
@@ -233,111 +255,109 @@ export const Settings = () => {
                     default_max_tokens: parseInt(e.target.value),
                   })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 min="100"
                 max="8000"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                主题
-              </label>
-              <select
+            <div className="space-y-2">
+              <Label htmlFor="theme">主题</Label>
+              <Select
                 value={formData.theme}
-                onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onValueChange={(value) => setFormData({ ...formData, theme: value })}
               >
-                <option value="light">亮色</option>
-                <option value="dark">暗色</option>
-              </select>
+                <SelectTrigger id="theme">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">亮色</SelectItem>
+                  <SelectItem value="dark">暗色</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                语言
-              </label>
-              <select
+            <div className="space-y-2">
+              <Label htmlFor="language">语言</Label>
+              <Select
                 value={formData.language}
-                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onValueChange={(value) => setFormData({ ...formData, language: value })}
               >
-                <option value="zh-CN">简体中文</option>
-                <option value="en-US">English</option>
-              </select>
+                <SelectTrigger id="language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="zh-CN">简体中文</SelectItem>
+                  <SelectItem value="en-US">English</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <button
+            <Button
               onClick={handleSaveSettings}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+              className="w-full"
             >
-              <SaveIcon size={16} />
-              <span>{saving ? '保存中...' : '保存设置'}</span>
-            </button>
-          </div>
-        </div>
+              <SaveIcon size={16} className="mr-2" />
+              {saving ? '保存中...' : '保存设置'}
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* 修改密码 */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">修改密码</h2>
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                当前密码
-              </label>
-              <input
-                type="password"
-                value={passwordData.old_password}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, old_password: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                required
-              />
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>修改密码</CardTitle>
+            <CardDescription>修改您的登录密码</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="old_password">当前密码</Label>
+                <Input
+                  id="old_password"
+                  type="password"
+                  value={passwordData.old_password}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, old_password: e.target.value })
+                  }
+                  required
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                新密码
-              </label>
-              <input
-                type="password"
-                value={passwordData.new_password}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, new_password: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                required
-                minLength={6}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="new_password">新密码</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  value={passwordData.new_password}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, new_password: e.target.value })
+                  }
+                  required
+                  minLength={6}
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                确认新密码
-              </label>
-              <input
-                type="password"
-                value={passwordData.confirm_password}
-                onChange={(e) =>
-                  setPasswordData({ ...passwordData, confirm_password: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                required
-                minLength={6}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">确认新密码</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  value={passwordData.confirm_password}
+                  onChange={(e) =>
+                    setPasswordData({ ...passwordData, confirm_password: e.target.value })
+                  }
+                  required
+                  minLength={6}
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              {saving ? '修改中...' : '修改密码'}
-            </button>
-          </form>
-        </div>
+              <Button type="submit" disabled={saving} className="w-full">
+                {saving ? '修改中...' : '修改密码'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -9,6 +9,17 @@ import { useThemeStore } from '@/stores/themeStore';
 import { useChat } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { LogOutIcon, SettingsIcon, SearchIcon, MoonIcon, SunIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export const Chat = () => {
   const navigate = useNavigate();
@@ -16,7 +27,9 @@ export const Chat = () => {
   const { theme, toggleTheme } = useThemeStore();
   const { messages, isSending, sendMessageStream, stopStreaming } = useChat();
   const { conversations, selectConversation, currentConversation, resetConversation } = useConversations();
+  const { toast } = useToast();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -38,13 +51,25 @@ export const Chat = () => {
 
   const handleResetCurrentConversation = async () => {
     if (!currentConversation) return;
+    setIsResetDialogOpen(true);
+  };
 
-    if (window.confirm('确定要重置当前对话吗？所有消息将被清空。')) {
-      try {
-        await resetConversation(currentConversation.thread_id);
-      } catch (error) {
-        console.error('Failed to reset conversation:', error);
-      }
+  const confirmReset = async () => {
+    if (!currentConversation) return;
+    try {
+      await resetConversation(currentConversation.thread_id);
+      toast({
+        title: '重置成功',
+        description: '对话已重置，所有消息已清空',
+      });
+      setIsResetDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to reset conversation:', error);
+      toast({
+        title: '重置失败',
+        description: '重置对话时发生错误',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -61,48 +86,51 @@ export const Chat = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="h-16 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 bg-white dark:bg-gray-800">
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">AI Agent</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+        <div className="h-16 border-b flex items-center justify-between px-6 bg-card">
+          <h1 className="text-xl font-semibold">AI Agent</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
               欢迎，{user?.nickname || user?.username}
             </span>
-            <button
+            <Separator orientation="vertical" className="h-6" />
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="搜索 (Ctrl+K)"
             >
-              <SearchIcon size={16} />
-              <span>搜索</span>
-            </button>
-            <button
+              <SearchIcon size={16} className="mr-2" />
+              搜索
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={toggleTheme}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title={theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
             >
               {theme === 'light' ? <MoonIcon size={16} /> : <SunIcon size={16} />}
-            </button>
-            <Link
-              to="/settings"
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <SettingsIcon size={16} />
-              <span>设置</span>
-            </Link>
-            <button
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/settings">
+                <SettingsIcon size={16} className="mr-2" />
+                设置
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <LogOutIcon size={16} />
-              <span>退出</span>
-            </button>
+              <LogOutIcon size={16} className="mr-2" />
+              退出
+            </Button>
           </div>
         </div>
 
@@ -126,6 +154,26 @@ export const Chat = () => {
         onClose={() => setIsSearchOpen(false)}
         onSelectConversation={handleSelectConversation}
       />
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>重置对话</DialogTitle>
+            <DialogDescription>
+              确定要重置当前对话吗？所有消息将被清空，此操作不可恢复。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsResetDialogOpen(false)}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={confirmReset}>
+              确定重置
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
