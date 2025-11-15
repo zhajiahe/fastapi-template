@@ -25,8 +25,11 @@ export const useConversations = () => {
   const loadConversations = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await request.get<ConversationResponse[]>('/conversations');
-      setConversations(response.data);
+      const response = await request.get('/conversations');
+      // 解析 BaseResponse 包装的分页数据
+      if (response.data.success && response.data.data) {
+        setConversations(response.data.data.items || []);
+      }
     } catch (error) {
       console.error('Failed to load conversations:', error);
     } finally {
@@ -41,10 +44,14 @@ export const useConversations = () => {
         const data: ConversationCreate = {
           title: title || '新对话',
         };
-        const response = await request.post<ConversationResponse>('/conversations', data);
-        addConversation(response.data);
-        setCurrentConversation(response.data);
-        return response.data;
+        const response = await request.post('/conversations', data);
+        // 解析 BaseResponse 包装的数据
+        if (response.data.success && response.data.data) {
+          addConversation(response.data.data);
+          setCurrentConversation(response.data.data);
+          return response.data.data;
+        }
+        throw new Error(response.data.msg || '创建会话失败');
       } catch (error) {
         console.error('Failed to create conversation:', error);
         throw error;
@@ -61,29 +68,32 @@ export const useConversations = () => {
         setCurrentConversation(conversation);
 
         // 加载会话消息
-        const response = await request.get<MessageResponse[]>(
+        const response = await request.get(
           `/conversations/${conversation.thread_id}/messages`
         );
-        // 将 MessageResponse 转换为 Message 类型，并按创建时间排序（如果时间相同，则按ID排序）
-        // 规范化角色：将 'ai' 映射为 'assistant' 以兼容旧数据
-        const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
-          if (role === 'ai' || role === 'assistant') return 'assistant';
-          if (role === 'human' || role === 'user') return 'user';
-          return role as 'user' | 'assistant' | 'system';
-        };
-        const messages = response.data
-          .map(msg => ({
-            id: msg.id,
-            role: normalizeRole(msg.role),
-            content: msg.content,
-            created_at: msg.created_at,
-          }))
-          .sort((a, b) => {
-            const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-            // 如果时间相同，按ID排序（确保顺序稳定）
-            return timeDiff !== 0 ? timeDiff : a.id - b.id;
-          });
-        setMessages(messages);
+        // 解析 BaseResponse 包装的数据
+        if (response.data.success && response.data.data) {
+          // 将 MessageResponse 转换为 Message 类型，并按创建时间排序（如果时间相同，则按ID排序）
+          // 规范化角色：将 'ai' 映射为 'assistant' 以兼容旧数据
+          const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
+            if (role === 'ai' || role === 'assistant') return 'assistant';
+            if (role === 'human' || role === 'user') return 'user';
+            return role as 'user' | 'assistant' | 'system';
+          };
+          const messages = response.data.data
+            .map((msg: MessageResponse) => ({
+              id: msg.id,
+              role: normalizeRole(msg.role),
+              content: msg.content,
+              created_at: msg.created_at,
+            }))
+            .sort((a: any, b: any) => {
+              const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+              // 如果时间相同，按ID排序（确保顺序稳定）
+              return timeDiff !== 0 ? timeDiff : a.id - b.id;
+            });
+          setMessages(messages);
+        }
       } catch (error) {
         console.error('Failed to load messages:', error);
       } finally {

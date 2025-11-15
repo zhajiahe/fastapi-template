@@ -14,8 +14,11 @@ export const UserStats = () => {
   const loadStats = async () => {
     try {
       setLoading(true);
-      const response = await request.get<UserStatsResponse>('/conversations/users/stats');
-      setStats(response.data);
+      const response = await request.get('/conversations/users/stats');
+      // 解析 BaseResponse 包装的数据
+      if (response.data.success && response.data.data) {
+        setStats(response.data.data);
+      }
     } catch (error) {
       console.error('Failed to load stats:', error);
     } finally {

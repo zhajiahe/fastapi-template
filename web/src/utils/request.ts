@@ -27,9 +27,19 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
+    // 检查 BaseResponse 格式的错误
+    if (response.data && !response.data.success) {
+      // 即使 HTTP 状态码是 200，但业务逻辑失败
+      const error: any = new Error(response.data.msg || '请求失败');
+      error.response = {
+        data: response.data,
+        status: response.data.code,
+      };
+      return Promise.reject(error);
+    }
     return response;
   },
-  async (error: AxiosError) => {
+  async (error: AxiosError<any>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // 如果是 401 错误且未重试过
@@ -53,6 +63,11 @@ request.interceptors.response.use(
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+    }
+
+    // 增强错误信息，从 BaseResponse 中提取 msg
+    if (error.response?.data?.msg) {
+      error.message = error.response.data.msg;
     }
 
     return Promise.reject(error);

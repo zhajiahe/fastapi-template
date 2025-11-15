@@ -99,23 +99,24 @@ export const useChat = () => {
 
         // 流式完成后，重新加载消息以获取实际的数据库ID
         if (currentConversation?.thread_id) {
-          const messagesResponse = await request.get<MessageResponse[]>(
+          const messagesResponse = await request.get(
             `/conversations/${currentConversation.thread_id}/messages`
           );
-          if (messagesResponse.data) {
+          // 解析 BaseResponse 包装的数据
+          if (messagesResponse.data.success && messagesResponse.data.data) {
             const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
               if (role === 'ai' || role === 'assistant') return 'assistant';
               if (role === 'human' || role === 'user') return 'user';
               return role as 'user' | 'assistant' | 'system';
             };
-            const messages = messagesResponse.data
-              .map(msg => ({
+            const messages = messagesResponse.data.data
+              .map((msg: MessageResponse) => ({
                 id: msg.id,
                 role: normalizeRole(msg.role),
                 content: msg.content,
                 created_at: msg.created_at,
               }))
-              .sort((a, b) => {
+              .sort((a: any, b: any) => {
                 const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
                 return timeDiff !== 0 ? timeDiff : a.id - b.id;
               });
@@ -158,38 +159,42 @@ export const useChat = () => {
         };
 
         const response = await request.post('/chat', requestData);
-        const data = response.data;
 
-        // 添加助手消息
-        const assistantMessage = {
-          id: Date.now() + 1,
-          role: 'assistant' as const,
-          content: data.response,
-          created_at: new Date().toISOString(),
-        };
-        addMessage(assistantMessage);
+        // 解析 BaseResponse 包装的数据
+        if (response.data.success && response.data.data) {
+          const data = response.data.data;
 
-        // 重新加载消息以获取实际的数据库ID
-        if (data.thread_id) {
-          const messagesResponse = await request.get<MessageResponse[]>(`/conversations/${data.thread_id}/messages`);
-          if (messagesResponse.data) {
-            const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
-              if (role === 'ai' || role === 'assistant') return 'assistant';
-              if (role === 'human' || role === 'user') return 'user';
-              return role as 'user' | 'assistant' | 'system';
-            };
-            const messages = messagesResponse.data
-              .map(msg => ({
-                id: msg.id,
-                role: normalizeRole(msg.role),
-                content: msg.content,
-                created_at: msg.created_at,
-              }))
-              .sort((a, b) => {
-                const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-                return timeDiff !== 0 ? timeDiff : a.id - b.id;
-              });
-            useChatStore.getState().setMessages(messages);
+          // 添加助手消息
+          const assistantMessage = {
+            id: Date.now() + 1,
+            role: 'assistant' as const,
+            content: data.response,
+            created_at: new Date().toISOString(),
+          };
+          addMessage(assistantMessage);
+
+          // 重新加载消息以获取实际的数据库ID
+          if (data.thread_id) {
+            const messagesResponse = await request.get(`/conversations/${data.thread_id}/messages`);
+            if (messagesResponse.data.success && messagesResponse.data.data) {
+              const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
+                if (role === 'ai' || role === 'assistant') return 'assistant';
+                if (role === 'human' || role === 'user') return 'user';
+                return role as 'user' | 'assistant' | 'system';
+              };
+              const messages = messagesResponse.data.data
+                .map((msg: MessageResponse) => ({
+                  id: msg.id,
+                  role: normalizeRole(msg.role),
+                  content: msg.content,
+                  created_at: msg.created_at,
+                }))
+                .sort((a: any, b: any) => {
+                  const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                  return timeDiff !== 0 ? timeDiff : a.id - b.id;
+                });
+              useChatStore.getState().setMessages(messages);
+            }
           }
         }
       } catch (error) {

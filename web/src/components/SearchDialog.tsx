@@ -26,8 +26,13 @@ export const SearchDialog = ({ isOpen, onClose, onSelectConversation }: SearchDi
         skip: 0,
         limit: 20,
       };
-      const response = await request.post<SearchResponse>('/conversations/search', data);
-      setResults(response.data.results || []);
+      const response = await request.post('/conversations/search', data);
+      // 解析 BaseResponse 包装的数据
+      if (response.data.success && response.data.data) {
+        setResults(response.data.data.results || []);
+      } else {
+        setResults([]);
+      }
     } catch (error) {
       console.error('Search failed:', error);
       setResults([]);
