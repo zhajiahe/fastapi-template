@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useChatStore } from '@/stores/chatStore';
 import request from '@/utils/request';
 import { UserSettingsResponse, UserSettingsUpdate, PasswordChange } from '@/api/aPIDoc';
-import { ArrowLeftIcon, SaveIcon, Trash2Icon } from 'lucide-react';
+import { ArrowLeftIcon, SaveIcon, Trash2Icon, UserIcon, BotIcon, KeyIcon, BarChart3Icon } from 'lucide-react';
 import { UserStats, UserStatsRef } from '@/components/UserStats';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,10 +28,18 @@ import {
 
 export const Settings = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuthStore();
   const { clearAllState } = useChatStore();
   const { toast } = useToast();
   const userStatsRef = useRef<UserStatsRef>(null);
+
+  // 从 URL 参数获取当前标签页，默认为 'profile'
+  const currentTab = searchParams.get('tab') || 'profile';
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
 
   const [settings, setSettings] = useState<UserSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,12 +55,29 @@ export const Settings = () => {
     max_tokens: 2000,
   });
 
+  // 用户信息编辑
+  const [profileData, setProfileData] = useState({
+    nickname: user?.nickname || '',
+    email: user?.email || '',
+  });
+  const [editingProfile, setEditingProfile] = useState(false);
+
   // 密码修改
   const [passwordData, setPasswordData] = useState({
     old_password: '',
     new_password: '',
     confirm_password: '',
   });
+
+  // 当用户信息加载后更新表单
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        nickname: user.nickname || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
 
   const loadAvailableModels = async () => {
     try {
@@ -149,6 +175,39 @@ export const Settings = () => {
     }
   };
 
+  const handleUpdateProfile = async () => {
+    try {
+      setSaving(true);
+      const response = await request.put('/auth/me', {
+        nickname: profileData.nickname,
+        email: profileData.email,
+      });
+
+      // 更新本地存储的用户信息
+      if (response.data.success && response.data.data) {
+        const updatedUser = response.data.data;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        // 触发页面刷新以更新所有组件
+        window.location.reload();
+      }
+
+      toast({
+        title: '更新成功',
+        description: '个人信息已更新',
+      });
+      setEditingProfile(false);
+    } catch (err: any) {
+      console.error('Update profile error:', err);
+      toast({
+        title: '更新失败',
+        description: err.message || err.response?.data?.msg || '更新个人信息失败',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -230,245 +289,363 @@ export const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="max-w-4xl mx-auto px-4 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" asChild>
+    <div className="min-h-screen bg-background">
+      <div className="border-b">
+        <div className="container flex h-16 items-center px-4">
+          <Button variant="ghost" size="sm" asChild>
             <Link to="/chat">
-              <ArrowLeftIcon size={20} className="mr-2" />
+              <ArrowLeftIcon size={16} className="mr-2" />
               返回聊天
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold">设置</h1>
+          <div className="ml-4 flex-1">
+            <h1 className="text-2xl font-semibold tracking-tight">设置</h1>
+            <p className="text-sm text-muted-foreground">
+              管理您的账户设置和偏好
+            </p>
+          </div>
         </div>
+      </div>
 
+      <div className="container max-w-4xl mx-auto py-6 px-4">
         {/* 错误提示 */}
         {loadError && (
-          <Card className="border-destructive">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 text-destructive">
-                <span className="font-semibold">加载错误:</span>
-                <span>{loadError}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  loadSettings();
-                  loadAvailableModels();
-                }}
-                className="mt-4"
-              >
-                重试
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="mb-6">
+            <Card className="border-destructive">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 text-destructive">
+                  <span className="font-semibold">加载错误:</span>
+                  <span>{loadError}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    loadSettings();
+                    loadAvailableModels();
+                  }}
+                  className="mt-4"
+                >
+                  重试
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
-        {/* 用户统计 */}
-        <UserStats ref={userStatsRef} />
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsTrigger value="profile" className="gap-2">
+              <UserIcon size={16} />
+              <span className="hidden sm:inline">个人信息</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2">
+              <BotIcon size={16} />
+              <span className="hidden sm:inline">AI 设置</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <KeyIcon size={16} />
+              <span className="hidden sm:inline">安全</span>
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2">
+              <BarChart3Icon size={16} />
+              <span className="hidden sm:inline">统计</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* 用户信息 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>用户信息</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="text-muted-foreground">用户名</Label>
-              <div className="mt-1">{user?.username}</div>
-            </div>
-            <Separator />
-            <div>
-              <Label className="text-muted-foreground">昵称</Label>
-              <div className="mt-1">{user?.nickname}</div>
-            </div>
-            <Separator />
-            <div>
-              <Label className="text-muted-foreground">邮箱</Label>
-              <div className="mt-1">{user?.email}</div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* 个人信息 */}
+          <TabsContent value="profile" className="space-y-4">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>账户信息</CardTitle>
+                  <CardDescription>
+                    查看和编辑您的账户基本信息
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-3">
+                    <Label htmlFor="username">用户名</Label>
+                    <Input
+                      id="username"
+                      value={user?.username || ''}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-[0.8rem] text-muted-foreground">
+                      用户名不可修改
+                    </p>
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="nickname">昵称</Label>
+                    <Input
+                      id="nickname"
+                      value={editingProfile ? profileData.nickname : user?.nickname || ''}
+                      onChange={(e) => setProfileData({ ...profileData, nickname: e.target.value })}
+                      disabled={!editingProfile}
+                      className={!editingProfile ? 'bg-muted' : ''}
+                      placeholder="输入昵称"
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="email">邮箱</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={editingProfile ? profileData.email : user?.email || ''}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      disabled={!editingProfile}
+                      className={!editingProfile ? 'bg-muted' : ''}
+                      placeholder="输入邮箱"
+                    />
+                  </div>
 
-        {/* AI 设置 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>AI 设置</CardTitle>
-            <CardDescription>配置默认的 AI 模型参数</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="llm_model">LLM 模型</Label>
-              {loadingModels ? (
-                <div className="text-sm text-muted-foreground">加载模型列表...</div>
-              ) : availableModels.length > 0 ? (
-                <Select
-                  value={formData.llm_model}
-                  onValueChange={(value) => setFormData({ ...formData, llm_model: value })}
-                >
-                  <SelectTrigger id="llm_model">
-                    <SelectValue placeholder="选择模型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableModels.map((modelId) => (
-                      <SelectItem key={modelId} value={modelId}>
-                        {modelId}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  id="llm_model"
-                  type="text"
-                  value={formData.llm_model}
-                  onChange={(e) =>
-                    setFormData({ ...formData, llm_model: e.target.value })
-                  }
-                  placeholder="例如: Qwen/Qwen2.5-7B-Instruct"
-                />
-              )}
-              <p className="text-xs text-muted-foreground">
-                选择您偏好的 LLM 模型，将应用于所有新对话
-              </p>
-            </div>
+                  <Separator />
 
-            <div className="space-y-2">
-              <Label htmlFor="max_tokens">最大 Token 数</Label>
-              <Input
-                id="max_tokens"
-                type="number"
-                value={formData.max_tokens}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    max_tokens: parseInt(e.target.value) || 2000,
-                  })
-                }
-                min="100"
-                max="32768"
-              />
-              <p className="text-xs text-muted-foreground">
-                控制模型生成的最大长度（1-32768）
-              </p>
-            </div>
-
-            <Button
-              onClick={handleSaveSettings}
-              disabled={saving}
-              className="w-full"
-            >
-              <SaveIcon size={16} className="mr-2" />
-              {saving ? '保存中...' : '保存设置'}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* 修改密码 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>修改密码</CardTitle>
-            <CardDescription>修改您的登录密码</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="old_password">当前密码</Label>
-                <Input
-                  id="old_password"
-                  type="password"
-                  value={passwordData.old_password}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, old_password: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="new_password">新密码</Label>
-                <Input
-                  id="new_password"
-                  type="password"
-                  value={passwordData.new_password}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, new_password: e.target.value })
-                  }
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirm_password">确认新密码</Label>
-                <Input
-                  id="confirm_password"
-                  type="password"
-                  value={passwordData.confirm_password}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, confirm_password: e.target.value })
-                  }
-                  required
-                  minLength={6}
-                />
-              </div>
-
-              <Button type="submit" disabled={saving} className="w-full">
-                {saving ? '修改中...' : '修改密码'}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* 清除所有对话 */}
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">危险操作</CardTitle>
-            <CardDescription>以下操作不可恢复，请谨慎操作</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold mb-2">清除所有对话</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  这将永久删除您的所有对话记录和消息，此操作不可恢复。
-                </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      disabled={deletingConversations}
-                    >
-                      <Trash2Icon size={16} className="mr-2" />
-                      {deletingConversations ? '清除中...' : '清除所有对话'}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>确认清除所有对话？</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        此操作将永久删除您的所有对话记录和消息，包括所有历史会话。
-                        <br />
-                        <strong className="text-destructive">此操作不可恢复！</strong>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleClearAllConversations}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  <div className="flex justify-end gap-2">
+                    {editingProfile ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditingProfile(false);
+                            setProfileData({
+                              nickname: user?.nickname || '',
+                              email: user?.email || '',
+                            });
+                          }}
+                          disabled={saving}
+                        >
+                          取消
+                        </Button>
+                        <Button
+                          onClick={handleUpdateProfile}
+                          disabled={saving}
+                        >
+                          <SaveIcon size={16} className="mr-2" />
+                          {saving ? '保存中...' : '保存'}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => setEditingProfile(true)}
                       >
-                        确认清除
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+                        编辑信息
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 危险操作 */}
+              <Card className="border-destructive">
+                <CardHeader>
+                  <CardTitle className="text-destructive">危险操作</CardTitle>
+                  <CardDescription>
+                    以下操作不可恢复，请谨慎操作
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium mb-2">清除所有对话</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        这将永久删除您的所有对话记录和消息，此操作不可恢复。
+                      </p>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            disabled={deletingConversations}
+                          >
+                            <Trash2Icon size={16} className="mr-2" />
+                            {deletingConversations ? '清除中...' : '清除所有对话'}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>确认清除所有对话？</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              此操作将永久删除您的所有对话记录和消息，包括所有历史会话。
+                              <br />
+                              <strong className="text-destructive">此操作不可恢复！</strong>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleClearAllConversations}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              确认清除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          </TabsContent>
+
+          {/* AI 设置 */}
+          <TabsContent value="ai" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>AI 模型配置</CardTitle>
+                <CardDescription>
+                  配置默认的 AI 模型和参数，将应用于所有新对话
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-3">
+                  <Label htmlFor="llm_model">LLM 模型</Label>
+                  {loadingModels ? (
+                    <div className="text-sm text-muted-foreground">加载模型列表...</div>
+                  ) : availableModels.length > 0 ? (
+                    <Select
+                      value={formData.llm_model}
+                      onValueChange={(value) => setFormData({ ...formData, llm_model: value })}
+                    >
+                      <SelectTrigger id="llm_model">
+                        <SelectValue placeholder="选择模型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableModels.map((modelId) => (
+                          <SelectItem key={modelId} value={modelId}>
+                            {modelId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="llm_model"
+                      type="text"
+                      value={formData.llm_model}
+                      onChange={(e) =>
+                        setFormData({ ...formData, llm_model: e.target.value })
+                      }
+                      placeholder="例如: Qwen/Qwen2.5-7B-Instruct"
+                    />
+                  )}
+                  <p className="text-[0.8rem] text-muted-foreground">
+                    选择您偏好的 LLM 模型
+                  </p>
+                </div>
+
+                <div className="grid gap-3">
+                  <Label htmlFor="max_tokens">最大 Token 数</Label>
+                  <Input
+                    id="max_tokens"
+                    type="number"
+                    value={formData.max_tokens}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        max_tokens: parseInt(e.target.value) || 2000,
+                      })
+                    }
+                    min="100"
+                    max="32768"
+                  />
+                  <p className="text-[0.8rem] text-muted-foreground">
+                    控制模型生成的最大长度（100-32768）
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveSettings}
+                    disabled={saving}
+                  >
+                    <SaveIcon size={16} className="mr-2" />
+                    {saving ? '保存中...' : '保存设置'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* 安全设置 */}
+          <TabsContent value="security" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>修改密码</CardTitle>
+                <CardDescription>
+                  更新您的登录密码以保护账户安全
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleChangePassword} className="space-y-6">
+                  <div className="grid gap-3">
+                    <Label htmlFor="old_password">当前密码</Label>
+                    <Input
+                      id="old_password"
+                      type="password"
+                      value={passwordData.old_password}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, old_password: e.target.value })
+                      }
+                      required
+                      placeholder="输入当前密码"
+                    />
+                  </div>
+
+                  <div className="grid gap-3">
+                    <Label htmlFor="new_password">新密码</Label>
+                    <Input
+                      id="new_password"
+                      type="password"
+                      value={passwordData.new_password}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, new_password: e.target.value })
+                      }
+                      required
+                      minLength={6}
+                      placeholder="至少 6 位字符"
+                    />
+                    <p className="text-[0.8rem] text-muted-foreground">
+                      密码长度至少为 6 位
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <Label htmlFor="confirm_password">确认新密码</Label>
+                    <Input
+                      id="confirm_password"
+                      type="password"
+                      value={passwordData.confirm_password}
+                      onChange={(e) =>
+                        setPasswordData({ ...passwordData, confirm_password: e.target.value })
+                      }
+                      required
+                      minLength={6}
+                      placeholder="再次输入新密码"
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={saving}>
+                      <KeyIcon size={16} className="mr-2" />
+                      {saving ? '修改中...' : '修改密码'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* 统计信息 */}
+          <TabsContent value="stats" className="space-y-4">
+            <UserStats ref={userStatsRef} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
