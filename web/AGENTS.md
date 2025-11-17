@@ -10,3 +10,7 @@ npx orval --input http://localhost:8000/openapi.json --output ./src/api
 
 # 测试文件
 你生成的测试文件测试结束后记得删除
+
+# 构建
+每次代码修改完成验证后构建dist
+bash delopy.sh

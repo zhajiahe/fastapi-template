@@ -217,8 +217,8 @@ export const MessageList = ({ messages }: MessageListProps) => {
                     )}
                   </div>
 
-                  {/* 操作按钮 */}
-                  {!message.isStreaming && (
+                  {/* 操作按钮 - 工具调用消息不显示复制按钮 */}
+                  {!message.isStreaming && !message.isToolCall && (
                     <div className="flex items-center gap-2 mt-2">
                       <Button
                         variant="ghost"

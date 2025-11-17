@@ -5,10 +5,10 @@
 """
 
 import uuid
+from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, status
-from loguru import logger
-from openai import OpenAI
 from sqlalchemy import func, select
 
 from app.core.config import settings
@@ -18,7 +18,6 @@ from app.core.security import create_tokens, get_password_hash, verify_password
 from app.models.base import BasePageQuery, BaseResponse, PageResponse, Token
 from app.models.user import User
 from app.models.user_settings import UserSettings
-from app.schemas.model import ModelInfo
 from app.schemas.user import PasswordChange, UserCreate, UserListQuery, UserResponse, UserUpdate
 from app.schemas.user_settings import UserSettingsResponse, UserSettingsUpdate
 
@@ -551,7 +550,7 @@ async def delete_user(
 # ==================== 模型管理接口 ====================
 
 
-@router.get("/models/available", response_model=BaseResponse[list[ModelInfo]])
+@router.get("/models/available", response_model=BaseResponse[list[dict[str, Any]]])
 async def list_available_models(_current_user: CurrentUser, db: DBSession):
     """
     获取可用的 LLM 模型列表
@@ -576,28 +575,18 @@ async def list_available_models(_current_user: CurrentUser, db: DBSession):
     if user_settings and user_settings.settings:
         base_url = user_settings.settings.get("base_url") or base_url
         api_key = user_settings.settings.get("api_key") or api_key
+    assert isinstance(base_url, str)
+    base_url = base_url + "/models"
 
-    # 验证配置
-    if not base_url or not api_key:
-        raise_business_error("API 密钥或基础 URL 未配置")
+    response = httpx.get(base_url, headers={"Authorization": f"Bearer {api_key}"})
+    if response.status_code != 200:
+        raise_business_error("获取模型列表失败")
 
-    try:
-        # 初始化 OpenAI 客户端
-        client = OpenAI(base_url=base_url, api_key=api_key)
+    models = response.json().get("data", [])
 
-        # 获取模型列表
-        models_response = client.models.list()
-
-        # 转换为 ModelInfo 对象
-        models = [ModelInfo(**model.model_dump()) for model in models_response.data]
-
-        return BaseResponse(
-            success=True,
-            code=200,
-            msg="获取可用模型列表成功",
-            data=models,
-        )
-
-    except Exception as e:
-        logger.error(f"获取模型列表失败: {e}")
-        raise_business_error(f"获取模型列表失败: {str(e)}")
+    return BaseResponse[list[dict[str, Any]]](
+        success=True,
+        code=200,
+        msg="获取模型列表成功",
+        data=models,
+    )

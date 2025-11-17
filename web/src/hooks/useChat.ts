@@ -74,6 +74,8 @@ export const useChat = () => {
         const decoder = new TextDecoder();
         let accumulatedContent = '';
         let streamDone = false;
+        const toolCalls: any[] = [];
+        const toolCallsMap = new Map<string, any>();
 
         if (reader) {
           while (true) {
@@ -98,10 +100,48 @@ export const useChat = () => {
                     accumulatedContent += parsed.content;
                     updateMessage(assistantMessageId, accumulatedContent);
                   } else if (parsed.type === 'tool_start') {
-                    // 工具调用开始 - 不再在内容中显示，通过 metadata 处理
-                    // 工具调用信息会在消息加载时通过 metadata.tool_calls 显示
+                    // 工具调用开始 - 创建临时工具调用记录
+                    const toolCallId = `${parsed.tool_name}_${Date.now()}`;
+                    const toolCall = {
+                      name: parsed.tool_name,
+                      input: parsed.tool_input,
+                    };
+                    toolCallsMap.set(toolCallId, toolCall);
+                    toolCalls.push(toolCall);
+                    // 更新消息的 metadata
+                    const currentMessages = useChatStore.getState().messages;
+                    const messageIndex = currentMessages.findIndex(m => m.id === assistantMessageId);
+                    if (messageIndex !== -1) {
+                      const updatedMessages = [...currentMessages];
+                      updatedMessages[messageIndex] = {
+                        ...updatedMessages[messageIndex],
+                        metadata: {
+                          ...updatedMessages[messageIndex].metadata,
+                          tool_calls: [...toolCalls],
+                        },
+                      };
+                      useChatStore.getState().setMessages(updatedMessages);
+                    }
                   } else if (parsed.type === 'tool_end') {
-                    // 工具调用结束 - 不再在内容中显示，通过 metadata 处理
+                    // 工具调用结束 - 更新输出结果
+                    const toolCall = toolCalls.find(tc => tc.name === parsed.tool_name);
+                    if (toolCall) {
+                      toolCall.output = parsed.tool_output;
+                      // 更新消息的 metadata
+                      const currentMessages = useChatStore.getState().messages;
+                      const messageIndex = currentMessages.findIndex(m => m.id === assistantMessageId);
+                      if (messageIndex !== -1) {
+                        const updatedMessages = [...currentMessages];
+                        updatedMessages[messageIndex] = {
+                          ...updatedMessages[messageIndex],
+                          metadata: {
+                            ...updatedMessages[messageIndex].metadata,
+                            tool_calls: [...toolCalls],
+                          },
+                        };
+                        useChatStore.getState().setMessages(updatedMessages);
+                      }
+                    }
                   } else if (parsed.content) {
                     // 兼容旧格式（没有type字段）
                     accumulatedContent += parsed.content;
