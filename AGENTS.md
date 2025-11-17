@@ -155,10 +155,16 @@ fastapi-template/
 ### 6. 用户个性化设置 (app/models/user_settings.py)
 
 - ✅ 独立 `user_settings` 表保存每位用户的偏好
-- ✅ 默认 LLM 参数：模型、温度、最大 Token
-- ✅ UI 偏好：主题与语言可配置
+- ✅ 默认 LLM 参数：模型（llm_model）、最大 Token（max_tokens）
+- ✅ LangGraph 配置：config（JSON格式）、context（JSON格式）
 - ✅ JSON `settings` 字段，便于扩展更多自定义配置
 - ✅ `GET/PUT /api/v1/users/settings` API 直接读写
+
+### 7. 级联删除机制
+
+- ✅ Message 表外键约束指向 Conversation
+- ✅ 删除会话时自动级联删除相关消息
+- ✅ 数据库层面保证数据一致性
 
 ## API 端点概览
 
@@ -178,20 +184,22 @@ fastapi-template/
 
 ### 用户个性化设置
 - `GET /api/v1/users/settings` - 获取当前用户偏好
-- `PUT /api/v1/users/settings` - 更新默认模型/温度/主题/语言
+- `PUT /api/v1/users/settings` - 更新 LLM 模型/最大 Token/配置/上下文
 
 ### 对话系统
 - `POST /api/v1/chat` - 发送消息 (非流式)
 - `POST /api/v1/chat/stream` - 发送消息 (SSE 流式)
 - `POST /api/v1/chat/stop` - 停止正在进行的对话（流式/非流式）
+
+### 会话管理
 - `POST /api/v1/conversations` - 创建会话
 - `GET /api/v1/conversations` - 获取会话列表
 - `GET /api/v1/conversations/{thread_id}` - 获取会话详情
 - `PATCH /api/v1/conversations/{thread_id}` - 更新会话
-- `DELETE /api/v1/conversations/{thread_id}` - 删除会话
+- `DELETE /api/v1/conversations/{thread_id}` - 删除会话（支持软删除/硬删除）
+- `DELETE /api/v1/conversations/all` - 删除所有历史会话
 - `POST /api/v1/conversations/{thread_id}/reset` - 重置会话并清空检查点
 - `GET /api/v1/conversations/{thread_id}/messages` - 获取消息历史
-- `POST /api/v1/conversations/{thread_id}/messages/{message_id}/regenerate` - 重新生成助手消息
 - `GET /api/v1/conversations/{thread_id}/state` - 获取会话状态
 - `GET /api/v1/conversations/{thread_id}/checkpoints` - 获取检查点历史
 - `GET /api/v1/conversations/{thread_id}/export` - 导出会话
