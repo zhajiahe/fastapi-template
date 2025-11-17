@@ -6,6 +6,7 @@ import { ChatInput } from '@/components/ChatInput';
 import { SearchDialog } from '@/components/SearchDialog';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { useUserSettingsStore } from '@/stores/userSettingsStore';
 import { useChat } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { LogOutIcon, SettingsIcon, SearchIcon, MoonIcon, SunIcon } from 'lucide-react';
@@ -25,6 +26,7 @@ export const Chat = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  const { loadSettings } = useUserSettingsStore();
   const { messages, isSending, sendMessageStream, stopStreaming } = useChat();
   const { conversations, selectConversation, currentConversation, resetConversation } = useConversations();
   const { toast } = useToast();
@@ -34,8 +36,11 @@ export const Chat = () => {
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
+    } else {
+      // 加载用户设置
+      loadSettings();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, loadSettings]);
 
   const handleLogout = () => {
     logout();

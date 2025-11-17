@@ -163,6 +163,71 @@ async def list_conversations(
     )
 
 
+@router.delete("/all", summary="删除所有历史会话")
+async def delete_all_conversations(
+    current_user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+    hard_delete: bool = True,
+) -> BaseResponse:
+    """删除当前用户的所有历史会话
+
+    Args:
+        current_user: 当前登录用户
+        db: 数据库会话
+        hard_delete: 是否硬删除（彻底删除），默认为硬删除
+
+    Returns:
+        BaseResponse: 删除结果
+    """
+    # 获取用户的所有会话
+    result = await db.execute(
+        select(Conversation).where(Conversation.user_id == current_user.id, Conversation.is_active == 1)
+    )
+    conversations = result.scalars().all()
+
+    if not conversations:
+        return BaseResponse(
+            success=True,
+            code=200,
+            msg="没有需要删除的会话",
+            data={"deleted_count": 0},
+        )
+
+    deleted_count = 0
+
+    if hard_delete:
+        # 硬删除：删除所有会话及其相关数据
+        from app.core.checkpointer import delete_thread_checkpoints
+
+        for conversation in conversations:
+            try:
+                # 删除检查点
+                await delete_thread_checkpoints(conversation.thread_id)
+            except Exception as e:
+                logger.warning(f"Failed to delete checkpoints for {conversation.thread_id}: {e}")
+
+            # 删除会话（消息会通过 cascade 自动删除）
+            await db.delete(conversation)
+            deleted_count += 1
+    else:
+        # 软删除：将所有会话标记为不活跃
+        for conversation in conversations:
+            conversation.is_active = 0
+            deleted_count += 1
+
+    await db.commit()
+
+    return BaseResponse(
+        success=True,
+        code=200,
+        msg=f"成功删除 {deleted_count} 个会话",
+        data={
+            "deleted_count": deleted_count,
+            "hard_delete": hard_delete,
+        },
+    )
+
+
 @router.get("/{thread_id}", response_model=BaseResponse[ConversationDetailResponse])
 async def get_conversation(
     thread_id: str,
@@ -684,69 +749,4 @@ async def get_user_stats(
                 for conv in recent_conversations
             ],
         ),
-    )
-
-
-@router.delete("/all", summary="删除所有历史会话")
-async def delete_all_conversations(
-    current_user: CurrentUser,
-    db: AsyncSession = Depends(get_db),
-    hard_delete: bool = True,
-) -> BaseResponse:
-    """删除当前用户的所有历史会话
-
-    Args:
-        current_user: 当前登录用户
-        db: 数据库会话
-        hard_delete: 是否硬删除（彻底删除），默认为硬删除
-
-    Returns:
-        BaseResponse: 删除结果
-    """
-    # 获取用户的所有会话
-    result = await db.execute(
-        select(Conversation).where(Conversation.user_id == current_user.id, Conversation.is_active == 1)
-    )
-    conversations = result.scalars().all()
-
-    if not conversations:
-        return BaseResponse(
-            success=True,
-            code=200,
-            msg="没有需要删除的会话",
-            data={"deleted_count": 0},
-        )
-
-    deleted_count = 0
-
-    if hard_delete:
-        # 硬删除：删除所有会话及其相关数据
-        from app.core.checkpointer import delete_thread_checkpoints
-
-        for conversation in conversations:
-            try:
-                # 删除检查点
-                await delete_thread_checkpoints(conversation.thread_id)
-            except Exception as e:
-                logger.warning(f"Failed to delete checkpoints for {conversation.thread_id}: {e}")
-
-            # 删除会话（消息会通过 cascade 自动删除）
-            await db.delete(conversation)
-            deleted_count += 1
-    else:
-        # 软删除：将所有会话标记为不活跃
-        for conversation in conversations:
-            conversation.is_active = 0
-            deleted_count += 1
-
-    await db.commit()
-
-    return BaseResponse(
-        success=True,
-        code=200,
-        msg=f"成功删除 {deleted_count} 个会话",
-        data={
-            "deleted_count": deleted_count,
-            "hard_delete": hard_delete,
-        },
     )

@@ -200,11 +200,36 @@ async def save_assistant_message(
 
     # 只保存助手消息，避免重复保存用户消息
     if role == "assistant":
+        # 提取工具调用信息
+        meta_data = dict(last_message.additional_kwargs) if last_message.additional_kwargs else {}
+
+        # 从消息历史中查找工具调用和工具消息
+        tool_calls = []
+        for i, msg in enumerate(messages):
+            # 检查是否是 AIMessage 且包含 tool_calls
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                for tool_call in msg.tool_calls:
+                    tool_info = {
+                        "name": tool_call.get("name", ""),
+                        "arguments": tool_call.get("args", {}),
+                    }
+
+                    # 查找对应的工具输出
+                    if i + 1 < len(messages):
+                        next_msg = messages[i + 1]
+                        if hasattr(next_msg, "name") and next_msg.name == tool_call.get("name"):
+                            tool_info["output"] = next_msg.content
+
+                    tool_calls.append(tool_info)
+
+        if tool_calls:
+            meta_data["tool_calls"] = tool_calls
+
         message = Message(
             thread_id=thread_id,
             role=role,
             content=str(last_message.content) if last_message.content else "",
-            meta_data=last_message.additional_kwargs,
+            meta_data=meta_data,
         )
         db.add(message)
 
@@ -398,6 +423,15 @@ async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Async
                 return
 
             # 保存助手消息并更新会话时间
+            # 如果 all_messages 为空，尝试从图状态中获取完整消息历史
+            if not all_messages:
+                try:
+                    state = await compiled_graph.aget_state(config)
+                    if state and state.values and "messages" in state.values:
+                        all_messages = state.values["messages"]
+                except Exception as e:
+                    logger.warning(f"Failed to get state for complete messages: {e}")
+
             if all_messages:
                 async with AsyncSessionLocal() as new_session:
                     await save_assistant_message(thread_id, all_messages, new_session, update_conversation=True)

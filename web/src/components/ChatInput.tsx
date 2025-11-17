@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useUserSettings } from '@/hooks/useUserSettings';
-import request from '@/utils/request';
+import { useUserSettingsStore } from '@/stores/userSettingsStore';
+import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -19,34 +19,23 @@ interface ChatInputProps {
 export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showReset }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { settings: userSettings, refreshSettings } = useUserSettings();
+  const { settings, updateShowToolCalls } = useUserSettingsStore();
+  const { toast } = useToast();
 
   const handleToggleToolCalls = async (checked: boolean) => {
     try {
-      // 获取当前设置
-      const response = await request.get<any>('/users/settings');
-      if (response.data.success && response.data.data) {
-        const data = response.data.data;
-        const currentSettings = data.settings || {};
-
-        // 更新设置
-        await request.put('/users/settings', {
-          default_model: data.default_model || null,
-          default_temperature: data.default_temperature,
-          default_max_tokens: data.default_max_tokens,
-          theme: data.theme || null,
-          language: data.language || null,
-          settings: {
-            ...currentSettings,
-            show_tool_calls: checked,
-          },
-        });
-
-        // 刷新设置
-        await refreshSettings();
-      }
+      await updateShowToolCalls(checked);
+      toast({
+        title: '设置已更新',
+        description: `工具调用显示已${checked ? '开启' : '关闭'}`,
+      });
     } catch (error) {
       console.error('Failed to update tool calls setting:', error);
+      toast({
+        title: '更新失败',
+        description: '无法更新工具调用显示设置',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -82,7 +71,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
           <div className="flex flex-col items-center gap-1 pb-2">
             <Switch
               id="show-tool-calls"
-              checked={userSettings.show_tool_calls}
+              checked={settings.show_tool_calls}
               onCheckedChange={handleToggleToolCalls}
               title="显示工具调用信息"
             />

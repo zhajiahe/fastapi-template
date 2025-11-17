@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useChatStore } from '@/stores/chatStore';
 import request from '@/utils/request';
 import { UserSettingsResponse, UserSettingsUpdate, PasswordChange } from '@/api/aPIDoc';
 import { ArrowLeftIcon, SaveIcon, Trash2Icon } from 'lucide-react';
-import { UserStats } from '@/components/UserStats';
+import { UserStats, UserStatsRef } from '@/components/UserStats';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +28,9 @@ import {
 export const Settings = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthStore();
+  const { clearAllState } = useChatStore();
   const { toast } = useToast();
+  const userStatsRef = useRef<UserStatsRef>(null);
 
   const [settings, setSettings] = useState<UserSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -202,6 +205,10 @@ export const Settings = () => {
           title: '清除成功',
           description: response.data.msg || '所有对话已清除',
         });
+        // 刷新统计信息
+        await userStatsRef.current?.refresh();
+        // 清空聊天状态（会话列表、当前会话、消息等）
+        clearAllState();
       }
     } catch (err: any) {
       toast({
@@ -260,7 +267,7 @@ export const Settings = () => {
         )}
 
         {/* 用户统计 */}
-        <UserStats />
+        <UserStats ref={userStatsRef} />
 
         {/* 用户信息 */}
         <Card>

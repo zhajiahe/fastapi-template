@@ -7,15 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { ToolCallCard } from '@/components/ToolCallCard';
+import { Message } from '@/stores/chatStore';
+import { useUserSettingsStore } from '@/stores/userSettingsStore';
 import 'highlight.js/styles/github-dark.css';
-
-interface Message {
-  id: number;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  created_at: string;
-  isStreaming?: boolean;
-}
 
 interface MessageListProps {
   messages: Message[];
@@ -25,6 +20,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const { toast } = useToast();
+  const { settings } = useUserSettingsStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -87,17 +83,30 @@ export const MessageList = ({ messages }: MessageListProps) => {
                     }`}
                   >
                     {(message.role === 'assistant' || message.role === 'ai') ? (
-                      <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:bg-gray-900 prose-pre:text-gray-100">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                        {message.isStreaming && (
-                          <span className="inline-block w-2 h-4 bg-muted-foreground animate-pulse ml-1" />
+                      <>
+                        <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:bg-gray-900 prose-pre:text-gray-100">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeHighlight]}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                          {message.isStreaming && (
+                            <span className="inline-block w-2 h-4 bg-muted-foreground animate-pulse ml-1" />
+                          )}
+                        </div>
+
+                        {/* 工具调用显示 */}
+                        {settings.show_tool_calls &&
+                         message.metadata?.tool_calls &&
+                         message.metadata.tool_calls.length > 0 && (
+                          <div className="mt-2">
+                            {message.metadata.tool_calls.map((toolCall, index) => (
+                              <ToolCallCard key={index} toolCall={toolCall} />
+                            ))}
+                          </div>
                         )}
-                      </div>
+                      </>
                     ) : (
                       <div className="whitespace-pre-wrap">{message.content}</div>
                     )}

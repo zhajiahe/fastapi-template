@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import request from '@/utils/request';
 import { UserStatsResponse } from '@/api/aPIDoc';
 import { MessageSquareIcon, FileTextIcon, ClockIcon } from 'lucide-react';
 
-export const UserStats = () => {
+export interface UserStatsRef {
+  refresh: () => Promise<void>;
+}
+
+export const UserStats = forwardRef<UserStatsRef>((_, ref) => {
   const [stats, setStats] = useState<UserStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadStats();
-  }, []);
 
   const loadStats = async () => {
     try {
@@ -25,6 +25,15 @@ export const UserStats = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  // 暴露刷新方法给父组件
+  useImperativeHandle(ref, () => ({
+    refresh: loadStats,
+  }));
 
   if (loading) {
     return (
@@ -106,4 +115,6 @@ export const UserStats = () => {
       )}
     </div>
   );
-};
+});
+
+UserStats.displayName = 'UserStats';

@@ -1,12 +1,24 @@
 import { create } from 'zustand';
 import { ConversationResponse, MessageResponse } from '@/api/aPIDoc';
 
-interface Message {
+export interface ToolCall {
+  id?: string;
+  name: string;
+  arguments?: string;
+  input?: any;
+  output?: any;
+}
+
+export interface Message {
   id: number;
   role: 'user' | 'assistant' | 'system';
   content: string;
   created_at: string;
   isStreaming?: boolean;
+  metadata?: {
+    tool_calls?: ToolCall[];
+    [key: string]: any;
+  };
 }
 
 interface ChatState {
@@ -37,6 +49,7 @@ interface ChatState {
   setIsLoading: (isLoading: boolean) => void;
   setIsSending: (isSending: boolean) => void;
   clearMessages: () => void;
+  clearAllState: () => void;
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -94,4 +107,13 @@ export const useChatStore = create<ChatState>((set) => ({
   setIsSending: (isSending) => set({ isSending }),
 
   clearMessages: () => set({ messages: [] }),
+
+  clearAllState: () =>
+    set({
+      conversations: [],
+      currentConversation: null,
+      messages: [],
+      isLoading: false,
+      isSending: false,
+    }),
 }));

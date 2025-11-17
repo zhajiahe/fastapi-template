@@ -86,6 +86,7 @@ export const useConversations = () => {
               role: normalizeRole(msg.role),
               content: msg.content,
               created_at: msg.created_at,
+              metadata: msg.metadata || {},
             }))
             .sort((a: any, b: any) => {
               const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
