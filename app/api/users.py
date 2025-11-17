@@ -575,6 +575,10 @@ async def list_available_models(_current_user: CurrentUser, db: DBSession):
     if user_settings and user_settings.settings:
         base_url = user_settings.settings.get("base_url") or base_url
         api_key = user_settings.settings.get("api_key") or api_key
+    if not base_url:
+        raise_business_error("API 基础 URL 未配置")
+    if not api_key:
+        raise_business_error("API 密钥未配置")
     assert isinstance(base_url, str)
     base_url = base_url + "/models"
 
