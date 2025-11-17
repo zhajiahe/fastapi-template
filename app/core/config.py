@@ -4,7 +4,6 @@
 使用 Pydantic Settings 管理应用配置
 """
 
-from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -24,11 +23,6 @@ class Settings(BaseSettings):
     # 应用配置
     APP_NAME: str = "FastAPI Template"
     DEBUG: bool = True
-
-    model_config = ConfigDict(
-        env_file=".env",
-        case_sensitive=True,
-    )  # type: ignore[typeddict-unknown-key]
 
 
 # 创建全局配置实例
