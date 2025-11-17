@@ -14,6 +14,7 @@ export const useChat = () => {
   } = useChatStore();
 
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
+  const abortControllerRef = useState<{ current: AbortController | null }>({ current: null })[0];
 
   // 发送消息（流式）
   const sendMessageStream = useCallback(
@@ -47,6 +48,9 @@ export const useChat = () => {
       setStreamingMessageId(assistantMessageId);
 
       try {
+        // 创建新的 AbortController
+        abortControllerRef.current = new AbortController();
+
         const requestData: ChatRequest = {
           message: content,
           thread_id: currentConversation?.thread_id || null,
@@ -59,6 +63,7 @@ export const useChat = () => {
             Authorization: `Bearer ${localStorage.getItem('access_token')}`,
           },
           body: JSON.stringify(requestData),
+          signal: abortControllerRef.current.signal,
         });
 
         if (!response.ok) {
@@ -68,6 +73,7 @@ export const useChat = () => {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let accumulatedContent = '';
+        let streamDone = false;
 
         if (reader) {
           while (true) {
@@ -102,6 +108,11 @@ export const useChat = () => {
                     updateMessage(assistantMessageId, accumulatedContent);
                   }
 
+                  // 检查是否完成
+                  if (parsed.done) {
+                    streamDone = true;
+                  }
+
                   if (parsed.stopped) {
                     // 流式被停止
                     break;
@@ -113,6 +124,11 @@ export const useChat = () => {
               }
             }
           }
+        }
+
+        // 等待一小段时间确保后端保存完成
+        if (streamDone) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         // 流式完成后，重新加载消息以获取实际的数据库ID
@@ -133,6 +149,7 @@ export const useChat = () => {
                 role: normalizeRole(msg.role),
                 content: msg.content,
                 created_at: msg.created_at,
+                metadata: msg.metadata || {},
               }))
               .sort((a: any, b: any) => {
                 const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -143,15 +160,19 @@ export const useChat = () => {
         }
 
         setStreamingMessageId(null);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to send message:', error);
-        updateMessage(assistantMessageId, '抱歉，发送消息时出现错误。');
+        // 如果是用户主动取消，不显示错误消息
+        if (error.name !== 'AbortError') {
+          updateMessage(assistantMessageId, '抱歉，发送消息时出现错误。');
+        }
         setStreamingMessageId(null);
       } finally {
         setIsSending(false);
+        abortControllerRef.current = null;
       }
     },
-    [currentConversation, isSending, addMessage, updateMessage, setIsSending]
+    [currentConversation, isSending, addMessage, updateMessage, setIsSending, abortControllerRef]
   );
 
   // 发送消息（非流式）
@@ -233,19 +254,15 @@ export const useChat = () => {
   );
 
   // 停止流式响应
-  const stopStreaming = useCallback(async () => {
-    if (!currentConversation?.thread_id) return;
-
-    try {
-      await request.post('/chat/stop', {
-        thread_id: currentConversation.thread_id,
-      });
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      // 中止 fetch 请求
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
       setStreamingMessageId(null);
       setIsSending(false);
-    } catch (error) {
-      console.error('Failed to stop streaming:', error);
     }
-  }, [currentConversation, setIsSending]);
+  }, [abortControllerRef, setIsSending]);
 
   return {
     messages,

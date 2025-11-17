@@ -10,7 +10,8 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
+    /* 主题色 - 使用渐变蓝紫色系 */
+    --primary: 262.1 83.3% 57.8%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -22,30 +23,43 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
+    --ring: 262.1 83.3% 57.8%;
+    --radius: 0.75rem;
+
+    /* 强调色 */
+    --accent-blue: 211 100% 50%;
+    --accent-purple: 262 83% 58%;
+    --accent-green: 142 71% 45%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    /* 使用更柔和的深色背景 */
+    --background: 222.2 47% 11%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    /* 添加微妙的蓝色调 */
+    --card: 223 47% 13%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 223 47% 13%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
+    /* 提高对比度 */
+    --primary: 217 91% 60%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 217 33% 17%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217 33% 17%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 50%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+
+    /* 强调色 - 深色模式下稍微调亮 */
+    --accent-blue: 211 100% 60%;
+    --accent-purple: 262 83% 68%;
+    --accent-green: 142 71% 55%;
   }
 }
 
@@ -70,7 +84,7 @@ code {
 
 /* Markdown 样式 */
 .prose {
-  color: #374151;
+  color: hsl(var(--foreground));
   max-width: 65ch;
 }
 
@@ -80,15 +94,16 @@ code {
 }
 
 .prose code {
-  background-color: #f3f4f6;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
 }
 
 .prose pre {
-  background-color: #1f2937;
-  color: #f9fafb;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -124,6 +139,7 @@ code {
   margin-top: 1em;
   margin-bottom: 0.5em;
   font-weight: 600;
+  color: hsl(var(--foreground));
 }
 
 .prose h1 {
@@ -139,20 +155,20 @@ code {
 }
 
 .prose blockquote {
-  border-left: 4px solid #d1d5db;
+  border-left: 4px solid hsl(var(--border));
   padding-left: 1rem;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }
 
 .prose a {
-  color: #2563eb;
+  color: hsl(var(--primary));
   text-decoration: underline;
 }
 
 .prose a:hover {
-  color: #1d4ed8;
+  opacity: 0.8;
 }
 
 /* 滚动条样式 */
@@ -162,14 +178,92 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: hsl(var(--muted));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 4px;
+  transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* 自定义动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -1000px 0;
+  }
+  to {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 1000px 100%;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

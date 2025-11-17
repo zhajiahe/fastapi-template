@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { PlusIcon, MessageSquareIcon, TrashIcon, EditIcon, CheckIcon, XIcon, RotateCcwIcon, SearchIcon } from 'lucide-react';
+import { useState } from 'react';
+import { PlusIcon, MessageSquareIcon, TrashIcon, EditIcon, CheckIcon, XIcon } from 'lucide-react';
 import { useConversations } from '@/hooks/useConversations';
 import { ConversationResponse } from '@/api/aPIDoc';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 
 export const Sidebar = () => {
   const {
@@ -24,15 +23,12 @@ export const Sidebar = () => {
     selectConversation,
     updateConversationTitle,
     removeConversation,
-    resetConversation,
   } = useConversations();
   const { toast } = useToast();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [targetConversationId, setTargetConversationId] = useState<string | null>(null);
 
   const handleCreateConversation = async () => {
@@ -90,47 +86,11 @@ export const Sidebar = () => {
     }
   };
 
-  const handleReset = async (threadId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTargetConversationId(threadId);
-    setResetDialogOpen(true);
-  };
-
-  const confirmReset = async () => {
-    if (!targetConversationId) return;
-    try {
-      await resetConversation(targetConversationId);
-      toast({
-        title: '重置成功',
-        description: '对话已重置，所有消息已清空',
-      });
-      setResetDialogOpen(false);
-      setTargetConversationId(null);
-    } catch (error) {
-      console.error('Failed to reset conversation:', error);
-      toast({
-        title: '重置失败',
-        description: '重置对话时发生错误',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  // 过滤会话列表
-  const filteredConversations = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return conversations;
-    }
-    const query = searchQuery.toLowerCase();
-    return conversations.filter((conv) =>
-      conv.title.toLowerCase().includes(query)
-    );
-  }, [conversations, searchQuery]);
 
   return (
     <div className="w-64 border-r bg-card flex flex-col h-screen">
       {/* Header */}
-      <div className="p-4 border-b space-y-3">
+      <div className="p-4 border-b">
         <Button
           onClick={handleCreateConversation}
           className="w-full"
@@ -139,28 +99,11 @@ export const Sidebar = () => {
           <PlusIcon size={16} className="mr-2" />
           新建对话
         </Button>
-
-        {/* 搜索框 */}
-        <div className="relative">
-          <SearchIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索对话..."
-            className="pl-9"
-          />
-        </div>
       </div>
 
       {/* Conversation List */}
       <ScrollArea className="flex-1">
-        {filteredConversations.length === 0 && searchQuery && (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            没有找到匹配的对话
-          </div>
-        )}
-        {filteredConversations.map((conversation) => (
+        {conversations.map((conversation) => (
           <div
             key={conversation.thread_id}
             className={`group relative px-3 py-3 cursor-pointer hover:bg-accent transition-colors ${
@@ -223,15 +166,6 @@ export const Sidebar = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={(e) => handleReset(conversation.thread_id, e)}
-                    className="h-6 w-6 text-yellow-600 hover:text-yellow-700"
-                    title="重置对话"
-                  >
-                    <RotateCcwIcon size={12} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
                     onClick={(e) => handleDelete(conversation.thread_id, e)}
                     className="h-6 w-6 text-destructive hover:text-destructive"
                     title="删除"
@@ -248,11 +182,7 @@ export const Sidebar = () => {
       {/* Footer */}
       <div className="p-4 border-t">
         <div className="text-xs text-muted-foreground">
-          {searchQuery ? (
-            <>找到 {filteredConversations.length} 个对话</>
-          ) : (
-            <>共 {conversations.length} 个对话</>
-          )}
+          共 {conversations.length} 个对话
         </div>
       </div>
 
@@ -271,26 +201,6 @@ export const Sidebar = () => {
             </Button>
             <Button variant="destructive" onClick={confirmDelete}>
               确定删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Dialog */}
-      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>重置对话</DialogTitle>
-            <DialogDescription>
-              确定要重置这个对话吗？所有消息将被清空，此操作不可恢复。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
-              取消
-            </Button>
-            <Button variant="destructive" onClick={confirmReset}>
-              确定重置
             </Button>
           </DialogFooter>
         </DialogContent>

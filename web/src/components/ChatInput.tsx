@@ -21,6 +21,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { settings, updateShowToolCalls } = useUserSettingsStore();
   const { toast } = useToast();
+  const maxLength = 2000;
 
   const handleToggleToolCalls = async (checked: boolean) => {
     try {
@@ -64,7 +65,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
   };
 
   return (
-    <div className="border-t bg-card p-4">
+    <div className="border-t bg-card p-4 shadow-lg">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-end gap-2">
           {/* 工具调用显示开关 */}
@@ -87,7 +88,8 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
             onKeyDown={handleKeyDown}
             placeholder="输入消息... (Shift + Enter 换行)"
             disabled={disabled}
-            className="flex-1 resize-none max-h-40 min-h-[60px]"
+            maxLength={maxLength}
+            className="flex-1 resize-none max-h-40 min-h-[60px] border-2 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all duration-200 rounded-xl"
             rows={1}
           />
           {isSending ? (
@@ -95,7 +97,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
               onClick={onStop}
               variant="destructive"
               size="icon"
-              className="h-[60px] w-[60px]"
+              className="h-[60px] w-[60px] shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200"
               title="停止生成"
             >
               <StopCircleIcon size={24} />
@@ -105,7 +107,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
               onClick={handleSend}
               disabled={disabled || !message.trim()}
               size="icon"
-              className="h-[60px] w-[60px]"
+              className="h-[60px] w-[60px] bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200"
               title="发送消息"
             >
               <SendIcon size={24} />
@@ -116,15 +118,22 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
               onClick={onReset}
               variant="outline"
               size="icon"
-              className="h-[60px] w-[60px]"
+              className="h-[60px] w-[60px] hover:border-primary hover:bg-accent transform hover:scale-105 active:scale-95 transition-all duration-200"
               title="重置对话"
             >
               <RotateCcwIcon size={24} />
             </Button>
           )}
         </div>
-        <div className="mt-2 text-xs text-muted-foreground text-center">
-          按 Enter 发送，Shift + Enter 换行
+        <div className="mt-2 flex justify-between items-center px-1">
+          <p className="text-xs text-muted-foreground">
+            按 Enter 发送，Shift + Enter 换行
+          </p>
+          <span className={`text-xs transition-colors ${
+            message.length > maxLength * 0.9 ? 'text-destructive font-medium' : 'text-muted-foreground'
+          }`}>
+            {message.length}/{maxLength}
+          </span>
         </div>
       </div>
     </div>

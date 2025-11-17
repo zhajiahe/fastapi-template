@@ -405,11 +405,16 @@ async def reset_conversation(
 
         await db.commit()
 
-        return {
-            "status": "reset",
-            "thread_id": thread_id,
-            "message": f"Conversation reset successfully. Deleted {deleted_count} messages.",
-        }
+        return BaseResponse(
+            success=True,
+            code=200,
+            msg=f"会话已重置，删除了 {deleted_count} 条消息",
+            data={
+                "status": "reset",
+                "thread_id": thread_id,
+                "deleted_count": deleted_count,
+            },
+        )
 
     except Exception as e:
         await db.rollback()
