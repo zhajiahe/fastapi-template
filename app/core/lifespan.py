@@ -5,7 +5,6 @@
 """
 
 from contextlib import asynccontextmanager
-from functools import lru_cache
 from typing import Any
 
 from fastapi import FastAPI
@@ -50,7 +49,7 @@ async def lifespan(app: FastAPI):
         checkpointer = await init_checkpointer(settings.CHECKPOINT_DB_PATH)
 
         # 创建 Agent 图（传入 checkpointer 以支持状态持久化）
-        compiled_graph = create_graph(checkpointer=checkpointer)
+        compiled_graph = await create_graph(checkpointer=checkpointer)
         logger.info("✅ LangGraph 图编译成功")
 
     except Exception as e:
@@ -92,8 +91,7 @@ def get_compiled_graph() -> Any:
     return compiled_graph
 
 
-@lru_cache(maxsize=32)
-def get_cached_graph(
+async def get_cached_graph(
     llm_model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
@@ -102,8 +100,7 @@ def get_cached_graph(
     """
     获取缓存的 LangGraph 图（根据用户配置）
 
-    使用 LRU 缓存策略，最多缓存 32 个不同配置的图实例。
-    这样可以为不同用户的不同配置提供高效的图实例复用。
+    注意: 由于改为异步函数，缓存功能已移除。如需缓存，建议在应用层实现。
 
     Args:
         llm_model: LLM 模型名称
@@ -115,29 +112,15 @@ def get_cached_graph(
         CompiledGraph: 编译后的图对象
 
     Note:
-        - 相同配置的请求会复用同一个图实例
-        - 超过缓存大小时，最少使用的图实例会被清除
         - 所有图实例共享同一个 checkpointer（状态持久化）
     """
     checkpointer = get_checkpointer()
-    graph = create_graph(
+    graph = await create_graph(
         checkpointer=checkpointer,
         llm_model=llm_model,
         api_key=api_key,
         base_url=base_url,
         max_tokens=max_tokens,
     )
-    logger.debug(
-        f"Created new graph instance with config: model={llm_model}, max_tokens={max_tokens}, cache_info={get_cached_graph.cache_info()}"
-    )
+    logger.debug(f"Created new graph instance with config: model={llm_model}, max_tokens={max_tokens}")
     return graph
-
-
-def clear_graph_cache():
-    """
-    清除图缓存
-
-    在需要强制重新创建所有图实例时调用（例如配置热重载）
-    """
-    get_cached_graph.cache_clear()
-    logger.info("Graph cache cleared")

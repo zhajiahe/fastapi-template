@@ -112,7 +112,7 @@ class PerformanceAnalyzer:
         errors = []
 
         for i, message in enumerate(messages[:num_messages]):
-            print(f"  📨 用户 {user_id} 发送消息 {i+1}/{num_messages}: {message[:30]}...")
+            print(f"  📨 用户 {user_id} 发送消息 {i + 1}/{num_messages}: {message[:30]}...")
 
             result = self.send_chat_message(token, message, thread_id)
 

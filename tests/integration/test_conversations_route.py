@@ -637,9 +637,12 @@ class TestConversationReset:
         # 重置会话
         response = client.post(f"/api/v1/conversations/{thread_id}/reset", headers=auth_headers)
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
+        response_data = response.json()
+        assert response_data["success"] is True
+        data = response_data["data"]
         assert data["status"] == "reset"
-        assert "10" in data["message"]  # 应该显示删除了10条消息
+        # 验证删除消息数量
+        assert data["deleted_count"] == 10
 
         # 验证消息已删除
         result = await db.execute(select(Message).where(Message.thread_id == thread_id))

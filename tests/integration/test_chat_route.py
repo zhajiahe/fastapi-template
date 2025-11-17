@@ -331,7 +331,9 @@ class TestConversationResetAPI:
             headers=auth_headers,
         )
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
+        response_data = response.json()
+        assert response_data["success"] is True
+        data = response_data["data"]
         assert data["status"] == "reset"
         assert data["thread_id"] == "test-reset-thread"
 

@@ -11,10 +11,19 @@ from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.runnables import Runnable
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 load_dotenv()
+client = MultiServerMCPClient(
+    {
+        "langchain_doc": {
+            "url": "https://docs.langchain.com/mcp",
+            "transport": "streamable_http",
+        }
+    }
+)
 
 
 @tool
@@ -34,7 +43,7 @@ def math_tool(expression: str) -> str:
         return f"Error: {e}"
 
 
-def get_agent(
+async def get_agent(
     checkpointer: Any | None = None,
     llm_model: str | None = None,
     api_key: str | None = None,
@@ -45,10 +54,14 @@ def get_agent(
     创建并返回 Agent 图
 
     Args:
-        checkpointer: 可选的检查点保存器，用于状态持久化
+        checkpointer: 可选的检查点保存器,用于状态持久化
+        llm_model: LLM 模型名称
+        api_key: API 密钥
+        base_url: API 基础 URL
+        max_tokens: 最大 token 数
 
     Returns:
-        CompiledGraph: 编译后的 Agent 图
+        Runnable: 编译后的 Agent 图
     """
     api_key_value = api_key or os.getenv("OPENAI_API_KEY")
     secret_api_key: SecretStr | None = SecretStr(api_key_value) if api_key_value else None
@@ -60,11 +73,17 @@ def get_agent(
         max_completion_tokens=max_tokens,
         streaming=True,  # 启用流式输出
     )
-    agent: Runnable = create_agent(model, tools=[math_tool], checkpointer=checkpointer)
+    tools = await client.get_tools()
+    agent: Runnable = create_agent(model, tools=tools, checkpointer=checkpointer)
     return agent
 
 
 if __name__ == "__main__":
-    agent = get_agent()
-    result = agent.invoke({"messages": [{"role": "user", "content": "What is 1231972 / 8723?"}]})
-    print(result)
+    import asyncio
+
+    async def main():
+        agent = await get_agent()
+        result = await agent.ainvoke({"messages": [{"role": "user", "content": "What is 1231972 / 8723?"}]})
+        print(result)
+
+    asyncio.run(main())

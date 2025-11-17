@@ -5,7 +5,6 @@
 """
 
 import uuid
-from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, status
@@ -550,7 +549,7 @@ async def delete_user(
 # ==================== 模型管理接口 ====================
 
 
-@router.get("/models/available", response_model=BaseResponse[list[dict[str, Any]]])
+@router.get("/models/available", response_model=BaseResponse[list[str]])
 async def list_available_models(_current_user: CurrentUser, db: DBSession):
     """
     获取可用的 LLM 模型列表
@@ -562,7 +561,7 @@ async def list_available_models(_current_user: CurrentUser, db: DBSession):
         db: 数据库会话
 
     Returns:
-        list[ModelInfo]: 可用模型列表
+        list[str]: 可用模型 ID 列表
     """
     # 获取用户设置
     result = await db.execute(select(UserSettings).where(UserSettings.user_id == _current_user.id))
@@ -586,11 +585,13 @@ async def list_available_models(_current_user: CurrentUser, db: DBSession):
     if response.status_code != 200:
         raise_business_error("获取模型列表失败")
 
-    models = response.json().get("data", [])
+    models_data = response.json().get("data", [])
+    # 提取模型 ID 列表
+    model_ids = [model["id"] if isinstance(model, dict) else model for model in models_data]
 
-    return BaseResponse[list[dict[str, Any]]](
+    return BaseResponse[list[str]](
         success=True,
         code=200,
         msg="获取模型列表成功",
-        data=models,
+        data=model_ids,
     )

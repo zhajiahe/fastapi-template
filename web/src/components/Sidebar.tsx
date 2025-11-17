@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PlusIcon, MessageSquareIcon, TrashIcon, EditIcon, CheckIcon, XIcon } from 'lucide-react';
+import { PlusIcon, MessageSquareIcon, TrashIcon, EditIcon, CheckIcon, XIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { useConversations } from '@/hooks/useConversations';
 import { useChatStore } from '@/stores/chatStore';
 import { ConversationResponse } from '@/api/aPIDoc';
@@ -31,6 +31,8 @@ export const Sidebar = () => {
   const [editTitle, setEditTitle] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [targetConversationId, setTargetConversationId] = useState<string | null>(null);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleCreateConversation = () => {
     // 不再直接创建空会话，而是清空当前选择，让用户开始新对话
@@ -88,18 +90,60 @@ export const Sidebar = () => {
 
 
   return (
-    <div className="w-64 border-r bg-card flex flex-col h-screen">
-      {/* Header */}
-      <div className="p-4 border-b">
+    <>
+      {/* Mobile Toggle Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="fixed top-4 left-4 z-50 md:hidden"
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+      >
+        <MenuIcon size={20} />
+      </Button>
+
+      {/* Overlay for mobile */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed md:relative
+        border-r bg-card flex flex-col h-screen
+        z-40
+        transition-all duration-300 ease-in-out
+        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        ${isCollapsed ? 'md:w-16' : 'w-72 sm:w-80 md:w-64 lg:w-72 xl:w-80'}
+      `}>
+        {/* Desktop Collapse Toggle Button */}
         <Button
-          onClick={handleCreateConversation}
-          className="w-full"
-          size="sm"
+          variant="ghost"
+          size="icon"
+          className="hidden md:flex absolute -right-3 top-6 z-50 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
         >
-          <PlusIcon size={16} className="mr-2" />
-          新建对话
+          {isCollapsed ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
         </Button>
-      </div>
+
+        {/* Header */}
+        <div className="p-4 border-b">
+          <Button
+            onClick={() => {
+              handleCreateConversation();
+              setIsMobileOpen(false);
+            }}
+            className={`w-full ${isCollapsed ? 'px-0' : ''}`}
+            size={isCollapsed ? 'icon' : 'sm'}
+            title={isCollapsed ? '新建对话' : ''}
+          >
+            <PlusIcon size={16} className={isCollapsed ? '' : 'mr-2'} />
+            {!isCollapsed && '新建对话'}
+          </Button>
+        </div>
 
       {/* Conversation List */}
       <ScrollArea className="flex-1">
@@ -111,9 +155,12 @@ export const Sidebar = () => {
                 ? 'bg-accent'
                 : ''
             }`}
-            onClick={() => selectConversation(conversation)}
+            onClick={() => {
+              selectConversation(conversation);
+              setIsMobileOpen(false);
+            }}
           >
-            {editingId === conversation.thread_id ? (
+            {editingId === conversation.thread_id && !isCollapsed ? (
               <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <Input
                   type="text"
@@ -147,32 +194,36 @@ export const Sidebar = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <MessageSquareIcon size={16} className="flex-shrink-0 text-muted-foreground" />
-                <span className="flex-1 text-sm truncate">{conversation.title}</span>
-                <div className="hidden group-hover:flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStartEdit(conversation);
-                    }}
-                    className="h-6 w-6"
-                    title="重命名"
-                  >
-                    <EditIcon size={12} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => handleDelete(conversation.thread_id, e)}
-                    className="h-6 w-6 text-destructive hover:text-destructive"
-                    title="删除"
-                  >
-                    <TrashIcon size={12} />
-                  </Button>
-                </div>
+              <div className={`flex items-center gap-2 ${isCollapsed ? 'justify-center' : ''}`}>
+                <MessageSquareIcon size={16} className={`flex-shrink-0 text-muted-foreground ${isCollapsed ? 'mx-auto' : ''}`} />
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1 text-sm truncate">{conversation.title}</span>
+                    <div className="hidden group-hover:flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEdit(conversation);
+                        }}
+                        className="h-6 w-6"
+                        title="重命名"
+                      >
+                        <EditIcon size={12} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleDelete(conversation.thread_id, e)}
+                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        title="删除"
+                      >
+                        <TrashIcon size={12} />
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -180,11 +231,13 @@ export const Sidebar = () => {
       </ScrollArea>
 
       {/* Footer */}
-      <div className="p-4 border-t">
-        <div className="text-xs text-muted-foreground">
-          共 {conversations.length} 个对话
+      {!isCollapsed && (
+        <div className="p-4 border-t">
+          <div className="text-xs text-muted-foreground">
+            共 {conversations.length} 个对话
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -205,6 +258,7 @@ export const Sidebar = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </>
   );
 };

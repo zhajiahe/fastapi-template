@@ -7,7 +7,7 @@ LangGraph 图定义
 from app.sample_agent import get_agent
 
 
-def create_graph(
+async def create_graph(
     checkpointer=None,
     llm_model: str | None = None,
     api_key: str | None = None,
@@ -28,6 +28,6 @@ def create_graph(
     Returns:
         Runnable: 可运行的 Agent 图
     """
-    return get_agent(
+    return await get_agent(
         checkpointer=checkpointer, llm_model=llm_model, api_key=api_key, base_url=base_url, max_tokens=max_tokens
     )

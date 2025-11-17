@@ -113,43 +113,41 @@ export const Chat = () => {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="h-16 border-b flex items-center justify-between px-6 bg-card">
-          <h1 className="text-xl font-semibold">AI Agent</h1>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
+        <div className="h-16 border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-card">
+          <h1 className="text-lg sm:text-xl font-semibold ml-12 md:ml-0">AI Agent</h1>
+          <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
+            <span className="hidden lg:inline text-sm text-muted-foreground mr-2">
               欢迎，{user?.nickname || user?.username}
             </span>
-            <Separator orientation="vertical" className="h-6" />
+            <Separator orientation="vertical" className="h-6 hidden lg:block mr-2" />
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setIsSearchOpen(true)}
               title="搜索 (Ctrl+K)"
             >
-              <SearchIcon size={16} className="mr-2" />
-              搜索
+              <SearchIcon size={16} />
             </Button>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={toggleTheme}
               title={theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
             >
               {theme === 'light' ? <MoonIcon size={16} /> : <SunIcon size={16} />}
             </Button>
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="icon" asChild>
               <Link to="/settings">
-                <SettingsIcon size={16} className="mr-2" />
-                设置
+                <SettingsIcon size={16} />
               </Link>
             </Button>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={handleLogout}
+              title="退出登录"
             >
-              <LogOutIcon size={16} className="mr-2" />
-              退出
+              <LogOutIcon size={16} />
             </Button>
           </div>
         </div>
