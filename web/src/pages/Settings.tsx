@@ -40,15 +40,6 @@ export const Settings = () => {
     confirm_password: '',
   });
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-    loadSettings();
-    loadAvailableModels();
-  }, [isAuthenticated, navigate]);
-
   const loadAvailableModels = async () => {
     try {
       setLoadingModels(true);
@@ -90,6 +81,16 @@ export const Settings = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    loadSettings();
+    loadAvailableModels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, navigate]);
 
   const handleSaveSettings = async () => {
     try {
