@@ -26,7 +26,7 @@ export const Chat = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
-  const { loadSettings } = useUserSettingsStore();
+  const { settings, loadSettings } = useUserSettingsStore();
   const { messages, isSending, sendMessageStream, stopStreaming } = useChat();
   const { conversations, selectConversation, currentConversation, resetConversation, loadConversations } = useConversations();
   const { toast } = useToast();
@@ -114,7 +114,12 @@ export const Chat = () => {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="h-16 border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-card">
-          <h1 className="text-lg sm:text-xl font-semibold ml-12 md:ml-0">AI Agent</h1>
+          <div className="flex items-center gap-2 ml-12 md:ml-0">
+            <h1 className="text-lg sm:text-xl font-semibold">AI Agent</h1>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              {settings.llm_model || 'Qwen/Qwen3-8B'}
+            </span>
+          </div>
           <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
             <span className="hidden lg:inline text-sm text-muted-foreground mr-2">
               欢迎，{user?.nickname || user?.username}

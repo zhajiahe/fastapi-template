@@ -66,7 +66,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
 
   return (
     <div className="border-t bg-card p-3 sm:p-4 shadow-lg">
-      <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto px-2 sm:px-0">
+      <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-2 sm:px-0">
         <div className="flex items-end gap-2">
           {/* 工具调用显示开关 */}
           <div className="flex flex-col items-center gap-1 pb-2">

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useUserSettingsStore } from '@/stores/userSettingsStore';
 import request from '@/utils/request';
 import { UserSettingsResponse, UserSettingsUpdate, PasswordChange } from '@/api/aPIDoc';
 import { ArrowLeftIcon, SaveIcon, Trash2Icon, UserIcon, BotIcon, KeyIcon, BarChart3Icon } from 'lucide-react';
@@ -31,6 +32,7 @@ export const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuthStore();
   const { clearAllState } = useChatStore();
+  const { loadSettings: loadUserSettings } = useUserSettingsStore();
   const { toast } = useToast();
   const userStatsRef = useRef<UserStatsRef>(null);
 
@@ -164,6 +166,8 @@ export const Settings = () => {
       });
       // 重新加载设置以更新本地状态
       await loadSettings();
+      // 同时更新 zustand store，使其他组件能感知变化
+      await loadUserSettings();
     } catch (err: any) {
       toast({
         title: '保存失败',

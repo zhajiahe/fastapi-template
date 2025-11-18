@@ -89,31 +89,13 @@ export const MessageList = ({ messages }: MessageListProps) => {
     return (
       <div className="flex-1 flex items-center justify-center bg-background p-4 sm:p-6 md:p-8">
         <div className="text-center animate-fade-in max-w-2xl">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4 shadow-lg mx-auto">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-400 to-gray-500 rounded-full flex items-center justify-center mb-4 shadow-lg mx-auto">
             <BotIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
           <h3 className="text-lg sm:text-xl font-semibold mb-2">开始新的对话</h3>
-          <p className="text-sm text-muted-foreground mb-4 sm:mb-6 px-4">
+          <p className="text-sm text-muted-foreground px-4">
             输入消息开始与 AI 助手聊天
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full max-w-md mx-auto px-4">
-            <button className="p-3 border border-border rounded-lg hover:border-primary hover:bg-accent transition-all duration-200 text-left group">
-              <p className="text-sm font-medium group-hover:text-primary transition-colors">💡 解释一个概念</p>
-              <p className="text-xs text-muted-foreground mt-1">获取详细的解释和示例</p>
-            </button>
-            <button className="p-3 border border-border rounded-lg hover:border-primary hover:bg-accent transition-all duration-200 text-left group">
-              <p className="text-sm font-medium group-hover:text-primary transition-colors">🔍 分析问题</p>
-              <p className="text-xs text-muted-foreground mt-1">深入分析复杂问题</p>
-            </button>
-            <button className="p-3 border border-border rounded-lg hover:border-primary hover:bg-accent transition-all duration-200 text-left group">
-              <p className="text-sm font-medium group-hover:text-primary transition-colors">✍️ 写作助手</p>
-              <p className="text-xs text-muted-foreground mt-1">帮助撰写和改进文本</p>
-            </button>
-            <button className="p-3 border border-border rounded-lg hover:border-primary hover:bg-accent transition-all duration-200 text-left group">
-              <p className="text-sm font-medium group-hover:text-primary transition-colors">💻 编程帮助</p>
-              <p className="text-xs text-muted-foreground mt-1">代码编写和调试支持</p>
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -122,7 +104,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
   return (
     <ScrollArea className="flex-1">
       <div className="px-4 py-6 sm:px-6 lg:px-8">
-        <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto space-y-6">
+        <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto space-y-6">
           {expandedMessages.map((message, index) => (
             <div
               key={message.id}
@@ -142,7 +124,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
 
               {/* 消息内容区域 */}
               <div className={`flex-1 ${message.role === 'user' ? 'flex justify-end' : ''}`}>
-                <div className="max-w-[85%] sm:max-w-[75%] md:max-w-[70%]">
+                <div className={message.role === 'user' ? 'max-w-[85%] sm:max-w-[80%] md:max-w-[75%]' : 'max-w-[90%]'}>
                   <div
                     className={`relative rounded-2xl px-4 py-3 shadow-md transition-all duration-200 hover:shadow-lg ${
                       message.role === 'user'
@@ -152,10 +134,6 @@ export const MessageList = ({ messages }: MessageListProps) => {
                         : 'bg-muted/50 dark:bg-muted text-foreground border border-border'
                     }`}
                   >
-                    {/* AI消息添加左侧彩色边框指示器 */}
-                    {(message.role === 'assistant' || message.role === 'ai') && !message.isToolCall && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-l-2xl" />
-                    )}
                     {/* 工具调用消息 */}
                     {message.isToolCall && message.toolCall ? (
                       <div className="space-y-2">
@@ -196,7 +174,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
                       </div>
                     ) : (message.role === 'assistant' || message.role === 'ai') ? (
                       <>
-                        <div className="prose prose-sm max-w-none dark:prose-invert prose-pre:bg-gray-900 prose-pre:text-gray-100">
+                        <div className="prose prose-base max-w-none dark:prose-invert prose-pre:bg-gray-900 prose-pre:text-gray-100 w-full">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeHighlight]}

@@ -85,7 +85,7 @@ code {
 /* Markdown 样式 */
 .prose {
   color: hsl(var(--foreground));
-  max-width: 65ch;
+  max-width: 90%; /* 设置为 90% 宽度 */
 }
 
 .prose p {

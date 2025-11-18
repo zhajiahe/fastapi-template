@@ -3,6 +3,10 @@ import request from '@/utils/request';
 
 interface UserSettings {
   show_tool_calls: boolean;
+  llm_model?: string;
+  max_tokens?: number;
+  config?: Record<string, any>;
+  context?: Record<string, any>;
 }
 
 interface UserSettingsState {
@@ -30,6 +34,10 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
         set({
           settings: {
             show_tool_calls: settingsJson.show_tool_calls !== undefined ? settingsJson.show_tool_calls : true,
+            llm_model: data.llm_model,
+            max_tokens: data.max_tokens,
+            config: data.config,
+            context: data.context,
           },
           loading: false,
         });
