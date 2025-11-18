@@ -121,9 +121,9 @@ export const SearchDialog = ({ isOpen, onClose, onSelectConversation }: SearchDi
 
           {!loading && results.length > 0 && (
             <div className="space-y-3">
-              {results.map((result, index) => (
+              {results.map((result) => (
                 <div
-                  key={index}
+                  key={result.thread_id}
                   onClick={() => handleSelectResult(result.thread_id)}
                   className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
                 >

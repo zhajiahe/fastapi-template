@@ -88,9 +88,9 @@ export const UserStats = forwardRef<UserStatsRef>((_, ref) => {
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-foreground mb-3">最近的会话</h3>
           <div className="space-y-2">
-            {stats.recent_conversations.slice(0, 5).map((conv: any, index) => (
+            {stats.recent_conversations.slice(0, 5).map((conv: any) => (
               <div
-                key={index}
+                key={conv.thread_id || conv.id}
                 className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
               >
                 <div className="flex-1 truncate">
