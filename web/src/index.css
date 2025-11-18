@@ -10,56 +10,56 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    /* 主题色 - 使用渐变蓝紫色系 */
-    --primary: 262.1 83.3% 57.8%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
+    /* 主题色 - 使用渐变浅绿灰色系 */
+    --primary: 150 30% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 15% 95%;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
+    --muted: 150 15% 95%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
+    --accent: 150 15% 95%;
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 262.1 83.3% 57.8%;
+    --border: 150 20% 88%;
+    --input: 150 20% 88%;
+    --ring: 150 30% 55%;
     --radius: 0.75rem;
 
     /* 强调色 */
-    --accent-blue: 211 100% 50%;
-    --accent-purple: 262 83% 58%;
-    --accent-green: 142 71% 45%;
+    --accent-green: 150 35% 50%;
+    --accent-teal: 170 40% 55%;
+    --accent-sage: 140 25% 60%;
   }
 
   .dark {
     /* 使用更柔和的深色背景 */
-    --background: 222.2 47% 11%;
-    --foreground: 210 40% 98%;
-    /* 添加微妙的蓝色调 */
-    --card: 223 47% 13%;
-    --card-foreground: 210 40% 98%;
-    --popover: 223 47% 13%;
-    --popover-foreground: 210 40% 98%;
+    --background: 150 10% 10%;
+    --foreground: 150 5% 98%;
+    /* 添加微妙的绿色调 */
+    --card: 150 12% 13%;
+    --card-foreground: 150 5% 98%;
+    --popover: 150 12% 13%;
+    --popover-foreground: 150 5% 98%;
     /* 提高对比度 */
-    --primary: 217 91% 60%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --primary: 150 40% 55%;
+    --primary-foreground: 150 10% 10%;
+    --secondary: 150 15% 18%;
+    --secondary-foreground: 150 5% 98%;
+    --muted: 150 15% 18%;
+    --muted-foreground: 150 10% 65%;
+    --accent: 150 15% 18%;
+    --accent-foreground: 150 5% 98%;
     --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 60%;
+    --destructive-foreground: 150 5% 98%;
+    --border: 150 15% 18%;
+    --input: 150 15% 18%;
+    --ring: 150 40% 55%;
 
     /* 强调色 - 深色模式下稍微调亮 */
-    --accent-blue: 211 100% 60%;
-    --accent-purple: 262 83% 68%;
-    --accent-green: 142 71% 55%;
+    --accent-green: 150 45% 60%;
+    --accent-teal: 170 50% 60%;
+    --accent-sage: 140 35% 65%;
   }
 }
 

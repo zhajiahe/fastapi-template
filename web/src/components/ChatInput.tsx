@@ -107,7 +107,7 @@ export const ChatInput = ({ onSend, onStop, onReset, disabled, isSending, showRe
               onClick={handleSend}
               disabled={disabled || !message.trim()}
               size="icon"
-              className="h-[50px] w-[50px] sm:h-[60px] sm:w-[60px] bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200"
+              className="h-[50px] w-[50px] sm:h-[60px] sm:w-[60px] bg-gradient-to-r from-emerald-400 to-slate-500 hover:from-emerald-500 hover:to-slate-600 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200"
               title="发送消息"
             >
               <SendIcon className="w-5 h-5 sm:w-6 sm:h-6" />

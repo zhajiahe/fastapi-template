@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatDate } from '@/utils/date';
 
 export const Sidebar = () => {
   const {
@@ -150,10 +151,10 @@ export const Sidebar = () => {
         {conversations.map((conversation) => (
           <div
             key={conversation.thread_id}
-            className={`group relative px-3 py-3 cursor-pointer hover:bg-accent transition-colors ${
+            className={`group relative px-3 py-3 cursor-pointer hover:bg-accent transition-all duration-200 border-l-4 ${
               currentConversation?.thread_id === conversation.thread_id
-                ? 'bg-accent'
-                : ''
+                ? 'bg-accent border-l-emerald-500'
+                : 'border-l-transparent'
             }`}
             onClick={() => {
               selectConversation(conversation);
@@ -198,8 +199,19 @@ export const Sidebar = () => {
                 <MessageSquareIcon size={16} className={`flex-shrink-0 text-muted-foreground ${isCollapsed ? 'mx-auto' : ''}`} />
                 {!isCollapsed && (
                   <>
-                    <span className="flex-1 text-sm truncate">{conversation.title}</span>
-                    <div className="hidden group-hover:flex items-center gap-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{conversation.title}</div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="truncate">
+                          {conversation.message_count ? `${conversation.message_count} 条消息` : '暂无消息'}
+                        </span>
+                        <span>·</span>
+                        <span className="flex-shrink-0">
+                          {formatDate(conversation.updated_at)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"

@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
-import { UserIcon, BotIcon, CopyIcon, CheckIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { BotIcon } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { Message } from '@/stores/chatStore';
 import { useUserSettingsStore } from '@/stores/userSettingsStore';
+import { MessageSkeleton } from '@/components/MessageSkeleton';
+import { MessageItem } from '@/components/MessageItem';
+import { useChatStore } from '@/stores/chatStore';
 import 'highlight.js/styles/github-dark.css';
 
 interface MessageListProps {
@@ -29,21 +27,9 @@ interface ExpandedMessage extends Message {
 export const MessageList = ({ messages }: MessageListProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [expandedToolCalls, setExpandedToolCalls] = useState<Set<number>>(new Set());
   const { toast } = useToast();
   const { settings } = useUserSettingsStore();
-
-  const toggleToolCall = (id: number) => {
-    setExpandedToolCalls(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
+  const { isLoading } = useChatStore();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,11 +71,22 @@ export const MessageList = ({ messages }: MessageListProps) => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Show loading skeleton when loading messages
+  if (isLoading && messages.length === 0) {
+    return (
+      <ScrollArea className="flex-1">
+        <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto">
+          <MessageSkeleton />
+        </div>
+      </ScrollArea>
+    );
+  }
+
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background p-4 sm:p-6 md:p-8">
         <div className="text-center animate-fade-in max-w-2xl">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-400 to-gray-500 rounded-full flex items-center justify-center mb-4 shadow-lg mx-auto">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-emerald-300 to-slate-400 rounded-full flex items-center justify-center mb-4 shadow-lg mx-auto">
             <BotIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
           <h3 className="text-lg sm:text-xl font-semibold mb-2">开始新的对话</h3>
@@ -105,7 +102,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
     <ScrollArea className="flex-1">
       <div className="px-4 py-6 sm:px-6 lg:px-8">
         <div className="max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto space-y-6">
-          {expandedMessages.map((message, index) => (
+          {expandedMessages.map((message) => (
             <div
               key={message.id}
               className="flex gap-4 items-start animate-slide-up"
@@ -114,7 +111,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
               {/* 左侧头像区域 */}
               {(message.role === 'assistant' || message.role === 'ai' || message.isToolCall) ? (
                 <Avatar className="flex-shrink-0 w-10 h-10 ring-2 ring-primary/20 shadow-md">
-                  <AvatarFallback className={message.isToolCall ? "bg-gradient-to-br from-orange-500 to-red-600" : "bg-gradient-to-br from-blue-500 to-purple-600"}>
+                  <AvatarFallback className={message.isToolCall ? "bg-gradient-to-br from-orange-500 to-red-600" : "bg-gradient-to-br from-emerald-400 to-slate-500"}>
                     {message.isToolCall ? "🔧" : <BotIcon size={20} className="text-white" />}
                   </AvatarFallback>
                 </Avatar>
@@ -128,7 +125,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
                   <div
                     className={`relative rounded-2xl px-4 py-3 shadow-md transition-all duration-200 hover:shadow-lg ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white'
+                        ? 'bg-gradient-to-br from-emerald-400 to-slate-500 text-white'
                         : message.isToolCall
                         ? 'bg-orange-50 dark:bg-orange-950/30 text-foreground border-2 border-orange-300 dark:border-orange-700'
                         : 'bg-muted/50 dark:bg-muted text-foreground border border-border'
@@ -149,6 +146,14 @@ export const MessageList = ({ messages }: MessageListProps) => {
                             {expandedToolCalls.has(message.id) ? '▼' : '▶'}
                           </span>
                         </button>
+
+                        {/* 简洁显示输入参数 */}
+                        {!expandedToolCalls.has(message.id) && (message.toolCall.arguments || message.toolCall.input) && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {JSON.stringify(message.toolCall.arguments || message.toolCall.input)}
+                          </div>
+                        )}
+
                         {expandedToolCalls.has(message.id) && (
                           <div className="space-y-2 animate-slide-up">
                             {(message.toolCall.arguments || message.toolCall.input) && (
@@ -183,9 +188,9 @@ export const MessageList = ({ messages }: MessageListProps) => {
                           </ReactMarkdown>
                           {message.isStreaming && (
                             <span className="inline-flex gap-1 ml-2 items-center">
-                              <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                              <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                              <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                             </span>
                           )}
                         </div>
@@ -195,9 +200,9 @@ export const MessageList = ({ messages }: MessageListProps) => {
                     )}
                   </div>
 
-                  {/* 操作按钮 - 工具调用消息不显示复制按钮 */}
+                  {/* 操作按钮和时间戳 - 工具调用消息不显示 */}
                   {!message.isStreaming && !message.isToolCall && (
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center justify-between gap-2 mt-2">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -217,6 +222,11 @@ export const MessageList = ({ messages }: MessageListProps) => {
                           </>
                         )}
                       </Button>
+                      {message.created_at && (
+                        <span className="text-xs text-muted-foreground" title={message.created_at}>
+                          {formatTime(message.created_at)}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -225,7 +235,7 @@ export const MessageList = ({ messages }: MessageListProps) => {
               {/* 右侧头像区域 */}
               {message.role === 'user' ? (
                 <Avatar className="flex-shrink-0 w-10 h-10 ring-2 ring-primary/20 shadow-md">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600">
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-slate-500">
                     <UserIcon size={20} className="text-white" />
                   </AvatarFallback>
                 </Avatar>

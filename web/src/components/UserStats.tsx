@@ -51,12 +51,12 @@ export const UserStats = forwardRef<UserStatsRef>((_, ref) => {
     <div className="bg-card rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold mb-4 text-foreground">使用统计</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-            <MessageSquareIcon size={24} className="text-blue-600 dark:text-blue-400" />
+        <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg">
+          <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
+            <MessageSquareIcon size={24} className="text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {stats.total_conversations}
             </div>
             <div className="text-sm text-muted-foreground">总会话数</div>
@@ -75,12 +75,12 @@ export const UserStats = forwardRef<UserStatsRef>((_, ref) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-            <ClockIcon size={24} className="text-purple-600 dark:text-purple-400" />
+        <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-950 rounded-lg">
+          <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded-lg">
+            <ClockIcon size={24} className="text-slate-600 dark:text-slate-400" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="text-2xl font-bold text-slate-600 dark:text-slate-400">
               {stats.recent_conversations.length}
             </div>
             <div className="text-sm text-muted-foreground">最近会话</div>
