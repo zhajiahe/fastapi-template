@@ -145,7 +145,8 @@ export const useConversations = () => {
   // 初始化时加载会话列表
   useEffect(() => {
     loadConversations();
-  }, [loadConversations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     conversations,

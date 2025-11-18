@@ -5,6 +5,7 @@
 
 export { AIMessage } from './AIMessage';
 export { ChatInput } from './ChatInput';
+export { EmptyState } from './EmptyState';
 export { MessageItem } from './MessageItem';
 // 聊天相关组件
 export { MessageList } from './MessageList';

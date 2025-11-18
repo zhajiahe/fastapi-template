@@ -147,7 +147,7 @@ export const Settings = () => {
     loadSettings();
     loadAvailableModels();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, navigate, loadAvailableModels, loadSettings]);
+  }, [isAuthenticated, navigate]);
 
   const handleSaveSettings = async () => {
     try {

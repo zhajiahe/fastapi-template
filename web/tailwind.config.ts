@@ -43,11 +43,19 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Grok 专用色值
+        grokbg: '#000000',         // 纯黑背景
+        grokgray: '#1e1e1e',       // AI 气泡、输入框背景
+        grokborder: '#2c2c2c',     // 边框、分割线
+        grokblue: '#3b82f6',       // 用户气泡主色
+        groktext: '#e4e4e7',       // 主文字
+        groksub: '#a1a1aa',        // 次级文字
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        grok: '1.5rem',  // 24px，所有气泡和输入框都用这个
       },
     },
   },

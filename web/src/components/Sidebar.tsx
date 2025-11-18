@@ -3,9 +3,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EditIcon,
+  HistoryIcon,
   MenuIcon,
   MessageSquareIcon,
   PlusIcon,
+  SearchIcon,
   TrashIcon,
   XIcon,
 } from 'lucide-react';
@@ -27,7 +29,11 @@ import { useConversations } from '@/hooks/useConversations';
 import { useChatStore } from '@/stores/chatStore';
 import { formatDate } from '@/utils/date';
 
-export const Sidebar = () => {
+interface SidebarProps {
+  onSearchOpen?: () => void;
+}
+
+export const Sidebar = ({ onSearchOpen }: SidebarProps) => {
   const { conversations, currentConversation, selectConversation, updateConversationTitle, removeConversation } =
     useConversations();
   const { setCurrentConversation, setMessages } = useChatStore();
@@ -39,6 +45,7 @@ export const Sidebar = () => {
   const [targetConversationId, setTargetConversationId] = useState<string | null>(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showHistoryPopover, setShowHistoryPopover] = useState(false);
 
   const handleCreateConversation = () => {
     // 不再直接创建空会话，而是清空当前选择，让用户开始新对话
@@ -111,53 +118,118 @@ export const Sidebar = () => {
         <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Grok Style */}
       <div
         className={`
         fixed md:relative
-        border-r bg-card flex flex-col h-screen
+        bg-card dark:bg-grokbg border-r border-border dark:border-grokborder flex flex-col h-screen
         z-40
         transition-all duration-300 ease-in-out
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        ${isCollapsed ? 'md:w-16' : 'w-72 sm:w-80 md:w-64 lg:w-72 xl:w-80'}
+        ${isCollapsed ? 'md:w-16' : 'w-64'}
       `}
       >
-        {/* Desktop Collapse Toggle Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="hidden md:flex absolute -right-3 top-6 z-50 h-6 w-6 rounded-full border bg-background shadow-md hover:bg-accent"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
-        >
-          {isCollapsed ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
-        </Button>
 
-        {/* Header */}
-        <div className="p-4 border-b">
+        {/* Header - Grok 新对话按钮和搜索 */}
+        <div className="p-3 space-y-2">
           <Button
             onClick={() => {
               handleCreateConversation();
               setIsMobileOpen(false);
             }}
-            className={`w-full ${isCollapsed ? 'px-0' : ''}`}
-            size={isCollapsed ? 'icon' : 'sm'}
+            variant="outline"
+            className={`w-full border-border dark:border-grokborder hover:bg-accent dark:hover:bg-grokgray/50 text-foreground dark:text-groktext rounded-grok transition-colors ${isCollapsed ? 'px-0' : ''}`}
+            size={isCollapsed ? 'icon' : 'default'}
             title={isCollapsed ? '新建对话' : ''}
           >
-            <PlusIcon size={16} className={isCollapsed ? '' : 'mr-2'} />
-            {!isCollapsed && '新建对话'}
+            <PlusIcon size={20} className={isCollapsed ? '' : 'mr-3'} />
+            {!isCollapsed && <span className="text-sm font-medium">New chat</span>}
           </Button>
+
+          {/* 搜索按钮 */}
+          <Button
+            variant="ghost"
+            onClick={onSearchOpen}
+            className={`w-full dark:hover:bg-grokgray/50 transition-colors ${isCollapsed ? 'px-0' : 'justify-start'}`}
+            size={isCollapsed ? 'icon' : 'default'}
+            title={isCollapsed ? '搜索对话 (⌘K)' : ''}
+          >
+            <SearchIcon size={18} className={isCollapsed ? '' : 'mr-3'} />
+            {!isCollapsed && <span className="text-sm">搜索对话</span>}
+            {!isCollapsed && (
+              <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-border dark:border-grokborder bg-muted dark:bg-grokgray px-1.5 font-mono text-[10px] font-medium text-muted-foreground dark:text-groksub opacity-100">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            )}
+          </Button>
+
+          {/* 折叠时显示历史对话图标和搜索图标 */}
+          {isCollapsed && (
+            <div
+              className="relative"
+              onMouseEnter={() => setShowHistoryPopover(true)}
+              onMouseLeave={() => setShowHistoryPopover(false)}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-full dark:hover:bg-grokgray/50"
+                title="历史对话"
+              >
+                <HistoryIcon size={20} />
+              </Button>
+
+              {/* 悬浮的对话列表 */}
+              {showHistoryPopover && conversations.length > 0 && (
+                <div
+                  className="absolute left-full ml-1 top-0 w-64 max-h-96 bg-card dark:bg-grokgray border border-border dark:border-grokborder rounded-lg shadow-xl overflow-hidden z-50"
+                >
+                  <div className="p-2 border-b border-border dark:border-grokborder">
+                    <div className="text-sm font-medium text-foreground dark:text-groktext">历史对话</div>
+                  </div>
+                  <ScrollArea className="max-h-80">
+                    {conversations.map((conversation) => (
+                      <button
+                        key={conversation.thread_id}
+                        onClick={() => {
+                          selectConversation(conversation);
+                          setShowHistoryPopover(false);
+                          setIsMobileOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 hover:bg-accent dark:hover:bg-grokgray/50 transition-colors ${
+                          currentConversation?.thread_id === conversation.thread_id
+                            ? 'bg-accent dark:bg-grokgray/80'
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MessageSquareIcon size={14} className="flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate">{conversation.title || 'New conversation'}</div>
+                            <div className="text-xs text-muted-foreground dark:text-groksub">
+                              {conversation.message_count || 0} 条消息
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </ScrollArea>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Conversation List */}
-        <ScrollArea className="flex-1">
-          {conversations.map((conversation) => (
+        {/* Conversation List - Grok Style - 折叠时隐藏 */}
+        {!isCollapsed && (
+          <ScrollArea className="flex-1 px-3">
+            {conversations.map((conversation) => (
             <div
               key={conversation.thread_id}
-              className={`group relative px-3 py-3 cursor-pointer hover:bg-accent transition-all duration-200 border-l-4 ${
+              className={`group relative mb-1 cursor-pointer transition-colors rounded-lg ${
                 currentConversation?.thread_id === conversation.thread_id
-                  ? 'bg-accent border-l-emerald-500'
-                  : 'border-l-transparent'
+                  ? 'bg-accent dark:bg-grokgray/80 text-foreground dark:text-white'
+                  : 'text-muted-foreground dark:text-groksub hover:bg-accent/50 dark:hover:bg-grokgray/50'
               }`}
               onClick={() => {
                 selectConversation(conversation);
@@ -193,60 +265,56 @@ export const Sidebar = () => {
                   </Button>
                 </div>
               ) : (
-                <div className={`flex items-center gap-2 ${isCollapsed ? 'justify-center' : ''}`}>
-                  <MessageSquareIcon
-                    size={16}
-                    className={`flex-shrink-0 text-muted-foreground ${isCollapsed ? 'mx-auto' : ''}`}
-                  />
-                  {!isCollapsed && (
-                    <>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{conversation.title}</div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="truncate">
-                            {conversation.message_count ? `${conversation.message_count} 条消息` : '暂无消息'}
-                          </span>
-                          <span>·</span>
-                          <span className="flex-shrink-0">{formatDate(conversation.updated_at)}</span>
-                        </div>
-                      </div>
-                      <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleStartEdit(conversation);
-                          }}
-                          className="h-6 w-6"
-                          title="重命名"
-                        >
-                          <EditIcon size={12} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleDelete(conversation.thread_id, e)}
-                          className="h-6 w-6 text-destructive hover:text-destructive"
-                          title="删除"
-                        >
-                          <TrashIcon size={12} />
-                        </Button>
-                      </div>
-                    </>
-                  )}
+                <div className="flex items-center gap-3 px-3 py-2.5">
+                  <MessageSquareIcon size={16} className="flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm truncate">{conversation.title || 'New conversation'}</div>
+                  </div>
+                  <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEdit(conversation);
+                      }}
+                      className="h-6 w-6 hover:bg-accent dark:hover:bg-grokgray"
+                      title="重命名"
+                    >
+                      <EditIcon size={12} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => handleDelete(conversation.thread_id, e)}
+                      className="h-6 w-6 text-destructive hover:text-destructive hover:bg-accent dark:hover:bg-grokgray"
+                      title="删除"
+                    >
+                      <TrashIcon size={12} />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
-          ))}
-        </ScrollArea>
-
-        {/* Footer */}
-        {!isCollapsed && (
-          <div className="p-4 border-t">
-            <div className="text-xs text-muted-foreground">共 {conversations.length} 个对话</div>
-          </div>
+            ))}
+          </ScrollArea>
         )}
+
+        {/* Footer - Grok Style */}
+        <div className="p-3">
+          {/* Desktop Collapse Toggle Button - 底部 */}
+          <div className={`hidden md:flex ${isCollapsed ? 'justify-center' : 'justify-end'}`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full border border-border dark:border-grokborder bg-background dark:bg-grokbg shadow-sm hover:bg-accent dark:hover:bg-grokgray"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              title={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
+            >
+              {isCollapsed ? <ChevronRightIcon size={14} /> : <ChevronLeftIcon size={14} />}
+            </Button>
+          </div>
+        </div>
 
         {/* Delete Dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

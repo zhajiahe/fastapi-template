@@ -33,30 +33,30 @@
   }
 
   .dark {
-    /* 使用更柔和的深色背景 */
-    --background: 150 10% 10%;
-    --foreground: 150 5% 98%;
-    /* 添加微妙的绿色调 */
-    --card: 150 12% 13%;
-    --card-foreground: 150 5% 98%;
-    --popover: 150 12% 13%;
-    --popover-foreground: 150 5% 98%;
-    /* 提高对比度 */
-    --primary: 150 40% 55%;
-    --primary-foreground: 150 10% 10%;
-    --secondary: 150 15% 18%;
-    --secondary-foreground: 150 5% 98%;
-    --muted: 150 15% 18%;
-    --muted-foreground: 150 10% 65%;
-    --accent: 150 15% 18%;
-    --accent-foreground: 150 5% 98%;
+    /* Grok 风格纯黑背景 */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 89.4%;
+    /* Grok 卡片和弹出框 */
+    --card: 0 0% 11.8%;
+    --card-foreground: 0 0% 89.4%;
+    --popover: 0 0% 11.8%;
+    --popover-foreground: 0 0% 89.4%;
+    /* Grok 主色调 */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 17.3%;
+    --secondary-foreground: 0 0% 89.4%;
+    --muted: 0 0% 11.8%;
+    --muted-foreground: 0 0% 63.1%;
+    --accent: 0 0% 17.3%;
+    --accent-foreground: 0 0% 89.4%;
     --destructive: 0 62.8% 50%;
-    --destructive-foreground: 150 5% 98%;
-    --border: 150 15% 18%;
-    --input: 150 15% 18%;
-    --ring: 150 40% 55%;
+    --destructive-foreground: 0 0% 89.4%;
+    --border: 0 0% 17.3%;
+    --input: 0 0% 17.3%;
+    --ring: 217 91% 60%;
 
-    /* 强调色 - 深色模式下稍微调亮 */
+    /* 强调色 */
     --accent-green: 150 45% 60%;
     --accent-teal: 170 50% 60%;
     --accent-sage: 140 35% 65%;

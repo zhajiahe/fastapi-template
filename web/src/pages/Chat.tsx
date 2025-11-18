@@ -1,7 +1,8 @@
-import { LogOutIcon, MoonIcon, SearchIcon, SettingsIcon, SunIcon } from 'lucide-react';
+import { LogOutIcon, MoonIcon, SettingsIcon, SunIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChatInput } from '@/components/ChatInput';
+import { EmptyState } from '@/components/EmptyState';
 import { MessageList } from '@/components/MessageList';
 import { SearchDialog } from '@/components/SearchDialog';
 import { Sidebar } from '@/components/Sidebar';
@@ -107,51 +108,60 @@ export const Chat = () => {
   }, []);
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar />
+    <div className="flex h-screen bg-background dark:bg-grokbg text-foreground dark:text-groktext overflow-hidden">
+      {/* Sidebar - Grok 左侧侧边栏，宽度 260px */}
+      <Sidebar onSearchOpen={() => setIsSearchOpen(true)} />
 
-      {/* Main Chat Area */}
+      {/* Main Chat Area - Grok 右侧聊天区 */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="h-16 border-b flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-card">
+        {/* Header - 简化的顶部栏 */}
+        <div className="h-14 flex items-center justify-between px-4 sm:px-6 bg-card dark:bg-grokbg">
           <div className="flex items-center gap-2 ml-12 md:ml-0">
-            <h1 className="text-lg sm:text-xl font-semibold">AI Agent</h1>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
+            <h1 className="text-base sm:text-lg font-semibold text-foreground dark:text-groktext">AI Agent</h1>
+            <span className="text-xs text-muted-foreground dark:text-groksub hidden sm:inline">
               {settings.llm_model || 'Qwen/Qwen3-8B'}
             </span>
           </div>
-          <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
-            <span className="hidden lg:inline text-sm text-muted-foreground mr-2">
-              欢迎，{user?.nickname || user?.username}
-            </span>
-            <Separator orientation="vertical" className="h-6 hidden lg:block mr-2" />
-            <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)} title="搜索 (Ctrl+K)">
-              <SearchIcon size={16} />
-            </Button>
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
               title={theme === 'light' ? '切换到暗色模式' : '切换到亮色模式'}
+              className="text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext"
             >
-              {theme === 'light' ? <MoonIcon size={16} /> : <SunIcon size={16} />}
+              {theme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
             </Button>
-            <Button variant="ghost" size="icon" asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              className="text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext"
+            >
               <Link to="/settings">
-                <SettingsIcon size={16} />
+                <SettingsIcon size={18} />
               </Link>
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录">
-              <LogOutIcon size={16} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              title="退出登录"
+              className="text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext"
+            >
+              <LogOutIcon size={18} />
             </Button>
           </div>
         </div>
 
-        {/* Messages */}
-        <MessageList messages={messages} />
+        {/* Messages or Empty State */}
+        {messages.length === 0 ? (
+          <EmptyState onNewChat={() => {/* 可选：点击建议卡片时的处理 */}} />
+        ) : (
+          <MessageList messages={messages} />
+        )}
 
-        {/* Input */}
+        {/* Input - Grok 固定底部输入框 */}
         <ChatInput
           onSend={handleSendMessage}
           onStop={stopStreaming}

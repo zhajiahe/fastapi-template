@@ -28,7 +28,8 @@ export const UserStats = forwardRef<UserStatsRef>((_, ref) => {
 
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 暴露刷新方法给父组件
   useImperativeHandle(ref, () => ({
