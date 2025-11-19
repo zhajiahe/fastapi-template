@@ -86,7 +86,7 @@ async def get_agent(
     root_dir = f"/tmp/{user_id}" if user_id else "/tmp/default"
     backend = FilesystemSandboxBackend(
         root_dir=root_dir,
-        virtual_mode=True,
+        virtual_mode=False,  # 使用实际文件系统，与文件浏览器保持一致
     )
     agent: Runnable = create_agent(
         model,
