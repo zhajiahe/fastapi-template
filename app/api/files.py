@@ -54,7 +54,7 @@ def get_user_backend(user_id: uuid.UUID) -> FilesystemSandboxBackend:
     """
     return FilesystemSandboxBackend(
         root_dir=f"/tmp/{user_id}",
-        virtual_mode=False,  # 使用实际文件系统以支持文件上传
+        virtual_mode=True,  # 使用虚拟模式，与 Agent 保持一致
     )
 
 
