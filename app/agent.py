@@ -17,7 +17,6 @@ from langchain.tools import tool
 from langchain_core.runnables import Runnable
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
-from loguru import logger
 from pydantic import SecretStr
 
 from app.backends import FilesystemSandboxBackend
@@ -84,9 +83,7 @@ async def get_agent(
     )
     tools = await client.get_tools()
     # 为每个用户创建独立的工作目录
-    logger.info(f"get_agent called with user_id={user_id}, type={type(user_id)}")
     root_dir = f"/tmp/{user_id}" if user_id else "/tmp/default"
-    logger.info(f"Creating FilesystemSandboxBackend for user_id={user_id}, root_dir={root_dir}")
     backend = FilesystemSandboxBackend(
         root_dir=root_dir,
         virtual_mode=True,  # 使用虚拟文件系统（内存）
