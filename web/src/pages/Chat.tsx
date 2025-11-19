@@ -1,6 +1,5 @@
-import { FolderOpen, LogOutIcon, MoonIcon, SettingsIcon, SunIcon } from 'lucide-react';
+import { FolderOpen, MoonIcon, SunIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { ChatInput } from '@/components/ChatInput';
 import { EmptyState } from '@/components/EmptyState';
 import { FileBrowser } from '@/components/FileBrowser';
@@ -26,8 +25,7 @@ import { useThemeStore } from '@/stores/themeStore';
 import { useUserSettingsStore } from '@/stores/userSettingsStore';
 
 export const Chat = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const { settings, loadSettings } = useUserSettingsStore();
   const { messages, isSending, sendMessageStream, stopStreaming } = useChat();
@@ -64,11 +62,8 @@ export const Chat = () => {
       // 加载用户设置
       loadSettings();
     }
-  }, [isAuthenticated, navigate, loadSettings]);
+  }, [isAuthenticated, loadSettings]);
 
-  const handleLogout = () => {
-    logout();
-  };
 
   const handleSelectConversation = async (threadId: string) => {
     const conversation = conversations.find((c) => c.thread_id === threadId);
@@ -146,25 +141,6 @@ export const Chat = () => {
               className="text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext"
             >
               {theme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              asChild
-              className="text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext"
-            >
-              <Link to="/settings">
-                <SettingsIcon size={18} />
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              title="退出登录"
-              className="text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext"
-            >
-              <LogOutIcon size={18} />
             </Button>
           </div>
         </div>

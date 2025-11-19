@@ -4,14 +4,17 @@ import {
   ChevronRightIcon,
   EditIcon,
   HistoryIcon,
+  LogOutIcon,
   MenuIcon,
   MessageSquareIcon,
   PlusIcon,
   SearchIcon,
+  SettingsIcon,
   TrashIcon,
   XIcon,
 } from 'lucide-react';
 import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import type { ConversationResponse } from '@/api/aPIDoc';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +41,7 @@ export const Sidebar = ({ onSearchOpen }: SidebarProps) => {
     useConversations();
   const { setCurrentConversation, setMessages } = useChatStore();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -99,6 +103,12 @@ export const Sidebar = ({ onSearchOpen }: SidebarProps) => {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    navigate('/login');
   };
 
   return (
@@ -301,7 +311,56 @@ export const Sidebar = ({ onSearchOpen }: SidebarProps) => {
         )}
 
         {/* Footer - Grok Style */}
-        <div className="p-3">
+        <div className="p-3 space-y-2 border-t border-border dark:border-grokborder">
+          {/* 设置和登出按钮 */}
+          {!isCollapsed ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="default"
+                asChild
+                className="flex-1 justify-start text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext hover:bg-accent dark:hover:bg-grokgray/50"
+              >
+                <Link to="/settings">
+                  <SettingsIcon size={18} className="mr-3" />
+                  <span className="text-sm">设置</span>
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="default"
+                onClick={handleLogout}
+                className="flex-1 justify-start text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext hover:bg-accent dark:hover:bg-grokgray/50"
+              >
+                <LogOutIcon size={18} className="mr-3" />
+                <span className="text-sm">退出</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                asChild
+                className="w-full text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext hover:bg-accent dark:hover:bg-grokgray/50"
+                title="设置"
+              >
+                <Link to="/settings">
+                  <SettingsIcon size={18} />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="w-full text-muted-foreground dark:text-groksub hover:text-foreground dark:hover:text-groktext hover:bg-accent dark:hover:bg-grokgray/50"
+                title="退出登录"
+              >
+                <LogOutIcon size={18} />
+              </Button>
+            </div>
+          )}
+
           {/* Desktop Collapse Toggle Button - 底部 */}
           <div className={`hidden md:flex ${isCollapsed ? 'justify-center' : 'justify-end'}`}>
             <Button
