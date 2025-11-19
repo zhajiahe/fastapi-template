@@ -373,12 +373,13 @@ async def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Async
             base_url = llm_params["base_url"]
             max_tokens = llm_params["max_tokens"]
 
+            logger.info(f"chat_stream endpoint: current_user.id={current_user.id}, type={type(current_user.id)}")
             compiled_graph = await get_cached_graph(
                 llm_model=llm_model if isinstance(llm_model, str) else None,
                 api_key=api_key if isinstance(api_key, str) else None,
                 base_url=base_url if isinstance(base_url, str) else None,
                 max_tokens=max_tokens if isinstance(max_tokens, int) else 4096,
-                user_id=int(current_user.id),
+                user_id=current_user.id,  # 使用 UUID，不转换为 int
             )
             # 使用 astream_events 获取逐token流式输出
             async for event in compiled_graph.astream_events(
