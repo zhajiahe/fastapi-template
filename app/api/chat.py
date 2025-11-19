@@ -277,6 +277,7 @@ async def chat(request: ChatRequest, current_user: CurrentUser, db: AsyncSession
         base_url = llm_params["base_url"]
         max_tokens = llm_params["max_tokens"]
 
+        logger.info(f"chat endpoint: current_user.id={current_user.id}, type={type(current_user.id)}")
         compiled_graph = await get_cached_graph(
             llm_model=llm_model if isinstance(llm_model, str) else None,
             api_key=api_key if isinstance(api_key, str) else None,
