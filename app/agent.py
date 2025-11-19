@@ -55,6 +55,7 @@ async def get_agent(
     api_key: str | None = None,
     base_url: str | None = None,
     max_tokens: int = 4096,
+    user_id: int | None = None,
 ) -> Runnable:
     """
     创建并返回 Agent 图
@@ -65,6 +66,7 @@ async def get_agent(
         api_key: API 密钥
         base_url: API 基础 URL
         max_tokens: 最大 token 数
+        user_id: 用户 ID，用于创建独立的工作目录
 
     Returns:
         Runnable: 编译后的 Agent 图
@@ -80,9 +82,11 @@ async def get_agent(
         streaming=True,  # 启用流式输出
     )
     tools = await client.get_tools()
+    # 为每个用户创建独立的工作目录
+    root_dir = f"/tmp/{user_id}" if user_id else "/tmp/default"
     backend = FilesystemSandboxBackend(
-        root_dir="/data2/zhanghuaao/project/langgraph-up-monorepo",
-        virtual_mode=False,
+        root_dir=root_dir,
+        virtual_mode=True,
     )
     agent: Runnable = create_agent(
         model,
@@ -91,10 +95,10 @@ async def get_agent(
         middleware=[
             TodoListMiddleware(),
             FilesystemMiddleware(backend=backend),
-            SummarizationMiddleware(model=model, max_tokens_before_summary=170000, messages_to_keep=20),
             PatchToolCallsMiddleware(),
+            SummarizationMiddleware(model=model, max_tokens_before_summary=170000, messages_to_keep=10),
         ],
-    )
+    ).with_config({"recursion_limit": 1000})  # 防止过早停止
     return agent
 
 

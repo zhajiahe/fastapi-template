@@ -15,6 +15,7 @@ from loguru import logger
 
 from app.api.chat import router as chat_router
 from app.api.conversations import router as conversations_router
+from app.api.files import router as files_router
 from app.api.users import auth_router
 from app.api.users import router as users_router
 from app.core.exceptions import (
@@ -109,6 +110,9 @@ app.include_router(chat_router, prefix="/api/v1")
 
 # 注册会话管理路由
 app.include_router(conversations_router, prefix="/api/v1")
+
+# 注册文件管理路由
+app.include_router(files_router, prefix="/api/v1")
 
 # 挂载前端静态文件
 web_dist_path = Path(__file__).parent.parent / "web" / "dist"

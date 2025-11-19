@@ -96,6 +96,7 @@ async def get_cached_graph(
     api_key: str | None = None,
     base_url: str | None = None,
     max_tokens: int = 4096,
+    user_id: int | None = None,
 ) -> Any:
     """
     获取缓存的 LangGraph 图（根据用户配置）
@@ -107,12 +108,14 @@ async def get_cached_graph(
         api_key: API 密钥
         base_url: API 基础 URL
         max_tokens: 最大 token 数
+        user_id: 用户 ID，用于创建独立的工作目录
 
     Returns:
         CompiledGraph: 编译后的图对象
 
     Note:
         - 所有图实例共享同一个 checkpointer（状态持久化）
+        - 每个用户拥有独立的工作目录 /tmp/{user_id}
     """
     checkpointer = get_checkpointer()
     graph = await create_graph(
@@ -121,6 +124,7 @@ async def get_cached_graph(
         api_key=api_key,
         base_url=base_url,
         max_tokens=max_tokens,
+        user_id=user_id,
     )
     logger.debug(f"Created new graph instance with config: model={llm_model}, max_tokens={max_tokens}")
     return graph

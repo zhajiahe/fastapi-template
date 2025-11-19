@@ -159,7 +159,14 @@ pnpm lint         # 代码检查
 ### 对话
 - `POST /api/v1/chat` - 发送消息
 - `POST /api/v1/chat/stream` - 流式对话
+- `POST /api/v1/chat/stop` - 停止对话
 - `GET /api/v1/conversations` - 会话列表
+
+### 文件管理
+- `POST /api/v1/files/upload` - 上传文件到用户工作目录
+- `GET /api/v1/files/list` - 列出用户文件
+- `GET /api/v1/files/read/{filename}` - 读取文件内容
+- `DELETE /api/v1/files/{filename}` - 删除文件
 
 ### 设置
 - `GET /api/v1/users/settings` - 获取设置
