@@ -7,13 +7,19 @@
 import os
 from typing import Any
 
+from deepagents.middleware import FilesystemMiddleware
+from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from dotenv import load_dotenv
 from langchain.agents import create_agent
+from langchain.agents.middleware import TodoListMiddleware
+from langchain.agents.middleware.summarization import SummarizationMiddleware
 from langchain.tools import tool
 from langchain_core.runnables import Runnable
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
+
+from app.backends import FilesystemSandboxBackend
 
 load_dotenv()
 client = MultiServerMCPClient(
@@ -74,7 +80,21 @@ async def get_agent(
         streaming=True,  # 启用流式输出
     )
     tools = await client.get_tools()
-    agent: Runnable = create_agent(model, tools=tools, checkpointer=checkpointer)
+    backend = FilesystemSandboxBackend(
+        root_dir="/data2/zhanghuaao/project/langgraph-up-monorepo",
+        virtual_mode=False,
+    )
+    agent: Runnable = create_agent(
+        model,
+        tools=tools,
+        checkpointer=checkpointer,
+        middleware=[
+            TodoListMiddleware(),
+            FilesystemMiddleware(backend=backend),
+            SummarizationMiddleware(model=model, max_tokens_before_summary=170000, messages_to_keep=20),
+            PatchToolCallsMiddleware(),
+        ],
+    )
     return agent
 
 

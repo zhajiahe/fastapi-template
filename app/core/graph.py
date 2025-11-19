@@ -4,7 +4,7 @@ LangGraph 图定义
 定义对话流程的图结构和节点
 """
 
-from app.sample_agent import get_agent
+from app.agent import get_agent
 
 
 async def create_graph(

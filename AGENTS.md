@@ -84,7 +84,7 @@ fastapi-template/
 │   │   ├── conversation.py       # 会话 Schema
 │   │   └── user_settings.py      # 用户设置 Schema
 │   ├── utils/                    # 工具函数
-│   ├── sample_agent.py           # LangGraph 示例 Agent
+│   ├── agent.py           # LangGraph 示例 Agent
 │   └── main.py                   # 应用入口和路由注册
 ├── alembic/                      # 数据库迁移
 │   ├── versions/                 # 迁移脚本版本
@@ -298,7 +298,7 @@ DEFAULT_LLM_MODEL=Qwen/Qwen3-8B
 6. 编写测试用例
 
 ### 集成新的 LLM 提供商
-1. 在 `app/sample_agent.py` 中修改 `get_agent()`（或替换为自定义 Agent 图）
+1. 在 `app/agent.py` 中修改 `get_agent()`（或替换为自定义 Agent 图）
 2. 增加对应的环境变量（API Key、Base URL、模型名称等）
 3. 更新 `pyproject.toml` 添加新供应商的 SDK 依赖
 
