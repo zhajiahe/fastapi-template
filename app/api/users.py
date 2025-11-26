@@ -8,10 +8,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 
 from app.core.deps import CurrentSuperUser, CurrentUser, DBSession
-from app.core.security import create_tokens, get_password_hash, verify_password
+from app.core.security import create_tokens, get_password_hash, verify_password, verify_refresh_token
 from app.models.base import BasePageQuery, BaseResponse, PageResponse, Token
 from app.models.user import User
-from app.schemas.user import PasswordChange, UserCreate, UserListQuery, UserResponse, UserUpdate
+from app.schemas.user import (
+    LoginRequest,
+    PasswordChange,
+    RefreshTokenRequest,
+    UserCreate,
+    UserListQuery,
+    UserResponse,
+    UserUpdate,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
@@ -22,27 +30,25 @@ auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 @auth_router.post("/login", response_model=BaseResponse[Token])
 async def login(
-    username: str,
-    password: str,
+    login_data: LoginRequest,
     db: DBSession,
 ):
     """
     用户登录
 
     Args:
-        username: 用户名
-        password: 密码
+        login_data: 登录请求数据（用户名和密码）
         db: 数据库会话
 
     Returns:
         Token: 访问令牌和刷新令牌
     """
     # 查找用户
-    result = await db.execute(select(User).where(User.username == username, User.deleted == 0))
+    result = await db.execute(select(User).where(User.username == login_data.username, User.deleted == 0))
     user = result.scalar_one_or_none()
 
     # 验证用户和密码
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
@@ -63,6 +69,59 @@ async def login(
         success=True,
         code=200,
         msg="登录成功",
+        data=Token(
+            id=user.id,
+            nickname=user.nickname,
+            access_token=access_token,
+            refresh_token=refresh_token,
+        ),
+    )
+
+
+@auth_router.post("/refresh", response_model=BaseResponse[Token])
+async def refresh_token(
+    token_data: RefreshTokenRequest,
+    db: DBSession,
+):
+    """
+    刷新访问令牌
+
+    Args:
+        token_data: 刷新令牌请求数据
+        db: 数据库会话
+
+    Returns:
+        Token: 新的访问令牌和刷新令牌
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="刷新令牌无效或已过期",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    # 验证刷新令牌
+    user_id = verify_refresh_token(token_data.refresh_token, credentials_exception)
+
+    # 获取用户信息
+    result = await db.execute(select(User).where(User.id == user_id, User.deleted == 0))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise credentials_exception
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="用户已被禁用",
+        )
+
+    # 创建新的 token
+    access_token, refresh_token = create_tokens({"user_id": user.id})
+
+    return BaseResponse(
+        success=True,
+        code=200,
+        msg="令牌刷新成功",
         data=Token(
             id=user.id,
             nickname=user.nickname,

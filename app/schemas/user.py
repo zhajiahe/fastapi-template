@@ -75,3 +75,16 @@ class PasswordChange(BaseModel):
         if len(v) < 6:
             raise ValueError("密码长度不能少于6位")
         return v
+
+
+class LoginRequest(BaseModel):
+    """登录请求"""
+
+    username: str = Field(..., min_length=3, max_length=50, description="用户名")
+    password: str = Field(..., min_length=6, max_length=128, description="密码")
+
+
+class RefreshTokenRequest(BaseModel):
+    """刷新令牌请求"""
+
+    refresh_token: str = Field(..., description="刷新令牌")

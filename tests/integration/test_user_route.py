@@ -52,7 +52,8 @@ class TestAuthAPI:
             },
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "用户名已存在" in response.json()["detail"]
+        data = response.json()
+        assert "用户名已存在" in data.get("msg", "") or "用户名已存在" in data.get("detail", "")
 
     def test_login_success(self, client: TestClient):
         """测试登录成功"""
@@ -67,7 +68,10 @@ class TestAuthAPI:
             },
         )
         # 登录
-        response = client.post("/api/v1/auth/login?username=loginuser&password=password123")
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "loginuser", "password": "password123"},
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["success"] is True
@@ -88,13 +92,20 @@ class TestAuthAPI:
             },
         )
         # 使用错误密码登录
-        response = client.post("/api/v1/auth/login?username=wrongpwduser&password=wrong_password")
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "wrongpwduser", "password": "wrong_password"},
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "用户名或密码错误" in response.json()["detail"]
+        data = response.json()
+        assert "用户名或密码错误" in data.get("msg", "") or "用户名或密码错误" in data.get("detail", "")
 
     def test_login_user_not_exist(self, client: TestClient):
         """测试登录用户不存在"""
-        response = client.post("/api/v1/auth/login?username=nonexistent&password=password123")
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "nonexistent", "password": "password123"},
+        )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_get_current_user(self, client: TestClient):
@@ -109,7 +120,10 @@ class TestAuthAPI:
                 "password": "password123",
             },
         )
-        login_response = client.post("/api/v1/auth/login?username=currentuser&password=password123")
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "currentuser", "password": "password123"},
+        )
         token = login_response.json()["data"]["access_token"]
 
         # 获取当前用户信息
@@ -136,7 +150,10 @@ class TestAuthAPI:
                 "password": "password123",
             },
         )
-        login_response = client.post("/api/v1/auth/login?username=updateme&password=password123")
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "updateme", "password": "password123"},
+        )
         token = login_response.json()["data"]["access_token"]
 
         # 更新用户信息
@@ -163,7 +180,10 @@ class TestAuthAPI:
                 "password": "old_password",
             },
         )
-        login_response = client.post("/api/v1/auth/login?username=changepwd&password=old_password")
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "changepwd", "password": "old_password"},
+        )
         token = login_response.json()["data"]["access_token"]
 
         # 修改密码
@@ -176,7 +196,10 @@ class TestAuthAPI:
         assert response.json()["success"] is True
 
         # 用新密码登录
-        new_login_response = client.post("/api/v1/auth/login?username=changepwd&password=new_password")
+        new_login_response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "changepwd", "password": "new_password"},
+        )
         assert new_login_response.status_code == status.HTTP_200_OK
 
     def test_change_password_wrong_old_password(self, client: TestClient):
@@ -191,7 +214,10 @@ class TestAuthAPI:
                 "password": "correct_password",
             },
         )
-        login_response = client.post("/api/v1/auth/login?username=wrongoldpwd&password=correct_password")
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "wrongoldpwd", "password": "correct_password"},
+        )
         token = login_response.json()["data"]["access_token"]
 
         # 使用错误的旧密码修改
@@ -201,7 +227,45 @@ class TestAuthAPI:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "旧密码错误" in response.json()["detail"]
+        data = response.json()
+        assert "旧密码错误" in data.get("msg", "") or "旧密码错误" in data.get("detail", "")
+
+    def test_refresh_token(self, client: TestClient):
+        """测试刷新令牌"""
+        # 注册并登录
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "refreshuser",
+                "email": "refresh@example.com",
+                "nickname": "Refresh User",
+                "password": "password123",
+            },
+        )
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "refreshuser", "password": "password123"},
+        )
+        refresh_token = login_response.json()["data"]["refresh_token"]
+
+        # 刷新令牌
+        response = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": refresh_token},
+        )
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["success"] is True
+        assert "access_token" in data["data"]
+        assert "refresh_token" in data["data"]
+
+    def test_refresh_token_invalid(self, client: TestClient):
+        """测试使用无效刷新令牌"""
+        response = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": "invalid_token"},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 class TestUserAPI:
@@ -257,7 +321,8 @@ class TestUserAPI:
             headers=auth_headers,
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "用户名已存在" in response.json()["detail"]
+        data = response.json()
+        assert "用户名已存在" in data.get("msg", "") or "用户名已存在" in data.get("detail", "")
 
     def test_create_user_invalid_email(self, client: TestClient, auth_headers: dict):
         """测试创建用户时邮箱格式错误"""
@@ -368,7 +433,8 @@ class TestUserAPI:
         """测试获取不存在的用户"""
         response = client.get("/api/v1/users/99999", headers=auth_headers)
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert "用户不存在" in response.json()["detail"]
+        data = response.json()
+        assert "用户不存在" in data.get("msg", "") or "用户不存在" in data.get("detail", "")
 
     def test_update_user(self, client: TestClient, auth_headers: dict):
         """测试更新用户"""

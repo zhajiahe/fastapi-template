@@ -66,6 +66,8 @@ warn_unused_ignores = true
 warn_no_return = true
 strict_equality = true
 ignore_missing_imports = true
+explicit_package_bases = true
+mypy_path = "."
 
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -84,10 +86,40 @@ addopts = [
 pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow tests",
+]
 
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = [
+    "app/__init__.py",
+    "*/migrations/*",
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]
+show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [dependency-groups]
 dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-xdist>=3.8.0",
+    "pytest-cov>=6.1.0",
 ]

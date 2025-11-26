@@ -1,0 +1,115 @@
+# =================================
+# FastAPI Template - Docker Compose
+# =================================
+
+services:
+  # ========== 应用服务 ==========
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: fastapi-template-app
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./app.db}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY:-change-me-in-production}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - DEBUG=${DEBUG:-false}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-["*"]}
+    volumes:
+      - ./logs:/app/logs
+      - app-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - fastapi-network
+
+  # ========== 开发服务 ==========
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: fastapi-template-dev
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=sqlite+aiosqlite:///./app.db
+      - SECRET_KEY=dev-secret-key
+      - REFRESH_SECRET_KEY=dev-refresh-secret-key
+      - DEBUG=true
+      - ALLOWED_ORIGINS=["*"]
+    volumes:
+      - .:/app
+      - /app/.venv  # 排除虚拟环境
+    restart: unless-stopped
+    profiles:
+      - dev
+    networks:
+      - fastapi-network
+
+  # ========== PostgreSQL 数据库 (可选) ==========
+  db:
+    image: postgres:16-alpine
+    container_name: fastapi-template-db
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-fastapi}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-fastapi}
+      - POSTGRES_DB=${POSTGRES_DB:-fastapi}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fastapi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - postgres
+    networks:
+      - fastapi-network
+
+  # ========== Redis 缓存 (可选) ==========
+  redis:
+    image: redis:7-alpine
+    container_name: fastapi-template-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - redis
+    networks:
+      - fastapi-network
+
+# ========== 网络配置 ==========
+networks:
+  fastapi-network:
+    driver: bridge
+
+# ========== 数据卷配置 ==========
+volumes:
+  app-data:
+  postgres-data:
+  redis-data:
+

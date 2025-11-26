@@ -197,7 +197,10 @@ async def superuser_token(client: TestClient, db: AsyncSession, cached_admin_pas
     # 登录获取token（使用全局缓存）
     global _cached_superuser_token
     if _cached_superuser_token is None:
-        response = client.post("/api/v1/auth/login?username=admin&password=admin123")
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"username": "admin", "password": "admin123"},
+        )
         _cached_superuser_token = response.json()["data"]["access_token"]
 
     return _cached_superuser_token

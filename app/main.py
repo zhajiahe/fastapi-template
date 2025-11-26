@@ -10,6 +10,8 @@ from loguru import logger
 
 from app.api.users import auth_router
 from app.api.users import router as users_router
+from app.core.config import settings
+from app.core.exceptions import register_exception_handlers
 from app.core.lifespan import lifespan
 from app.middleware.logging import LoggingMiddleware, setup_logging
 
@@ -26,13 +28,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# 注册全局异常处理器
+register_exception_handlers(app)
+
 # 添加日志中间件
 app.add_middleware(LoggingMiddleware)
 
-# 配置 CORS
+# 配置 CORS（从配置文件读取允许的来源）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该配置具体的域名
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
