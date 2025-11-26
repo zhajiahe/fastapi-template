@@ -5,7 +5,7 @@
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from app.core.deps import CurrentSuperUser, CurrentUser, DBSession
 from app.core.security import create_tokens, get_password_hash, verify_password, verify_refresh_token
@@ -303,36 +303,14 @@ async def get_users(
         _current_user: 当前用户（仅用于权限验证）
         db: 数据库会话
     """
-    # 构建查询条件
-    query = select(User).where(User.deleted == 0)
+    from app.services.user import UserService
 
-    # 关键词搜索
-    if query_params.keyword:
-        keyword = query_params.keyword
-        query = query.where(
-            (User.username.like(f"%{keyword}%"))
-            | (User.email.like(f"%{keyword}%"))
-            | (User.nickname.like(f"%{keyword}%"))
-        )
-
-    # 激活状态过滤
-    if query_params.is_active is not None:
-        query = query.where(User.is_active == query_params.is_active)
-
-    # 超级管理员过滤
-    if query_params.is_superuser is not None:
-        query = query.where(User.is_superuser == query_params.is_superuser)
-
-    # 获取总数
-    count_query = select(func.count()).select_from(query.subquery())
-    total_result = await db.execute(count_query)
-    total = total_result.scalar() or 0
-
-    # 分页查询
-    query = query.order_by(User.create_time.desc()).limit(page_query.limit).offset(page_query.offset)
-
-    result = await db.execute(query)
-    users = result.scalars().all()
+    user_service = UserService(db)
+    users, total = await user_service.get_users(
+        query_params=query_params,
+        page_num=page_query.page_num,
+        page_size=page_query.page_size,
+    )
 
     # 转换为响应模型
     user_list = [UserResponse.model_validate(user) for user in users]
