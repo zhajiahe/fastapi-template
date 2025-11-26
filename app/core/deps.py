@@ -81,20 +81,15 @@ async def get_current_active_user(
     """
     获取当前激活的用户
 
+    注意：is_active 检查已在 get_current_user 中完成，
+    此函数主要用于语义区分和依赖链。
+
     Args:
         current_user: 当前用户
 
     Returns:
         User: 当前用户对象
-
-    Raises:
-        HTTPException: 用户未激活时抛出 403 错误
     """
-    if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="用户未激活",
-        )
     return current_user
 
 
