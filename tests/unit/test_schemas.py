@@ -27,7 +27,7 @@ class TestUserCreateSchema:
         assert user_data.nickname == "Test User"
         assert user_data.password == "password123"
         assert user_data.is_active is True
-        assert user_data.is_superuser is False
+        assert user_data.role_ids == []  # 默认没有角色
 
     @pytest.mark.unit
     def test_username_too_short(self):
@@ -96,12 +96,12 @@ class TestUserUpdateSchema:
             email="new@example.com",
             nickname="New Name",
             is_active=False,
-            is_superuser=True,
+            role_ids=[1, 2],
         )
         assert update_data.email == "new@example.com"
         assert update_data.nickname == "New Name"
         assert update_data.is_active is False
-        assert update_data.is_superuser is True
+        assert update_data.role_ids == [1, 2]
 
     @pytest.mark.unit
     def test_empty_update(self):

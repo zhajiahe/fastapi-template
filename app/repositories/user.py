@@ -8,6 +8,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.role import Role
 from app.models.user import User
 from app.repositories.base import BaseRepository
 
@@ -34,7 +35,7 @@ class UserRepository(BaseRepository[User]):
         """根据用户名获取用户（包含角色和权限）"""
         result = await self.db.execute(
             select(User)
-            .options(selectinload(User.roles).selectinload("permissions"))
+            .options(selectinload(User.roles).selectinload(Role.permissions))
             .where(User.username == username, User.deleted == 0)
         )
         return result.scalar_one_or_none()

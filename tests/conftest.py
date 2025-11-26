@@ -105,7 +105,12 @@ async def db(db_engine):
         try:
             from sqlalchemy import text
 
+            # 清理关联表和主表
+            await session.execute(text("DELETE FROM user_roles"))
+            await session.execute(text("DELETE FROM role_permissions"))
             await session.execute(text("DELETE FROM users"))
+            await session.execute(text("DELETE FROM roles"))
+            await session.execute(text("DELETE FROM permissions"))
             await session.commit()
         except Exception:
             await session.rollback()
@@ -126,6 +131,93 @@ async def override_get_db(db: AsyncSession):
     app.dependency_overrides[get_db] = _override_get_db
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="class")
+async def setup_permissions(db: AsyncSession):
+    """
+    创建测试所需的权限（类级别共享）
+    """
+    from sqlalchemy import select
+
+    from app.core.permissions import get_all_permissions
+    from app.models.permission import Permission
+
+    permissions_data = get_all_permissions()
+    created_permissions = []
+
+    for perm_data in permissions_data:
+        # 检查权限是否已存在
+        result = await db.execute(
+            select(Permission).where(Permission.code == perm_data["code"], Permission.deleted == 0)
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            created_permissions.append(existing)
+        else:
+            permission = Permission(
+                code=perm_data["code"],
+                name=perm_data["name"],
+                module=perm_data["module"],
+                description=perm_data.get("description"),
+            )
+            db.add(permission)
+            created_permissions.append(permission)
+
+    await db.commit()
+
+    # 刷新以获取 ID
+    for perm in created_permissions:
+        await db.refresh(perm)
+
+    return created_permissions
+
+
+@pytest.fixture(scope="class")
+async def setup_roles(db: AsyncSession, setup_permissions: list):
+    """
+    创建测试所需的角色（类级别共享）
+    """
+    from sqlalchemy import select
+
+    from app.models.role import Role
+
+    all_permissions = setup_permissions
+
+    # 检查是否已存在 admin 角色
+    result = await db.execute(select(Role).where(Role.code == "admin", Role.deleted == 0))
+    admin_role = result.scalar_one_or_none()
+
+    if not admin_role:
+        admin_role = Role(
+            code="admin",
+            name="管理员",
+            description="系统管理员，拥有所有权限",
+            permissions=all_permissions,  # 分配所有权限
+        )
+        db.add(admin_role)
+    else:
+        # 更新权限
+        admin_role.permissions = all_permissions
+
+    # 创建普通用户角色（没有任何权限）
+    result = await db.execute(select(Role).where(Role.code == "user", Role.deleted == 0))
+    user_role = result.scalar_one_or_none()
+
+    if not user_role:
+        user_role = Role(
+            code="user",
+            name="普通用户",
+            description="普通用户角色",
+        )
+        db.add(user_role)
+
+    await db.commit()
+    await db.refresh(admin_role)
+    await db.refresh(user_role)
+
+    return {"admin": admin_role, "user": user_role}
 
 
 # ============ 客户端 Fixtures ============
@@ -168,7 +260,9 @@ def cached_admin_password_hash():
 
 
 @pytest.fixture(scope="class")
-async def superuser_token(client: TestClient, db: AsyncSession, cached_admin_password_hash: str) -> str:
+async def superuser_token(
+    client: TestClient, db: AsyncSession, cached_admin_password_hash: str, setup_roles: dict
+) -> str:
     """
     创建超级管理员并返回其访问令牌（类级别共享，使用缓存的密码哈希）
     """
@@ -176,23 +270,25 @@ async def superuser_token(client: TestClient, db: AsyncSession, cached_admin_pas
 
     from app.models.user import User
 
+    admin_role = setup_roles["admin"]
+
     # 检查是否已存在admin用户
     result = await db.execute(select(User).where(User.username == "admin", User.deleted == 0))
     existing_user = result.scalar_one_or_none()
 
     if not existing_user:
-        # 创建超级管理员用户（使用缓存的密码哈希）
-        superuser = User(
+        # 创建管理员用户（使用缓存的密码哈希）
+        admin_user = User(
             username="admin",
             email="admin@example.com",
             nickname="Admin",
             hashed_password=cached_admin_password_hash,
             is_active=True,
-            is_superuser=True,
         )
-        db.add(superuser)
+        admin_user.roles.append(admin_role)
+        db.add(admin_user)
         await db.commit()
-        await db.refresh(superuser)
+        await db.refresh(admin_user)
 
     # 登录获取token（使用全局缓存）
     global _cached_superuser_token

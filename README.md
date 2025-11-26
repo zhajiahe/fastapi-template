@@ -6,6 +6,7 @@
 
 - 🚀 **FastAPI** + SQLAlchemy 2.0 异步 ORM
 - 🔐 **JWT 认证** (Access Token + Refresh Token)
+- 🛡️ **RBAC 权限控制** (角色 + 细粒度权限码)
 - 📁 **分层架构** (Router → Service → Repository)
 - 🗃️ **Alembic** 数据库迁移
 - 🧪 **Pytest** 单元测试 + 集成测试
@@ -57,7 +58,19 @@ cp .env.example .env
 make db-upgrade
 ```
 
-### 4. 启动服务
+### 4. 初始化 RBAC 权限数据
+
+```bash
+make db-init-rbac
+```
+
+这将创建：
+- 12 个基础权限 (user/role/permission 各 4 个 CRUD 权限)
+- admin 角色（拥有所有权限）
+- user_manager 角色（用户管理权限）
+- viewer 角色（只读权限）
+
+### 5. 启动服务
 
 ```bash
 make dev
@@ -73,18 +86,44 @@ make test-cov         # 测试 + 覆盖率报告
 make lint-fix         # 代码检查并修复
 make format           # 格式化代码
 make check            # 运行所有检查
+make db-init-rbac     # 初始化 RBAC 权限数据
 ```
 
 ## 📡 API 概览
+
+### 认证接口
 
 | 接口 | 方法 | 说明 |
 |------|------|------|
 | `/api/v1/auth/login` | POST | 用户登录 |
 | `/api/v1/auth/register` | POST | 用户注册 |
 | `/api/v1/auth/refresh` | POST | 刷新令牌 |
-| `/api/v1/auth/me` | GET | 获取当前用户 |
-| `/api/v1/users` | GET/POST | 用户列表/创建 |
-| `/api/v1/users/{id}` | GET/PUT/DELETE | 用户详情/更新/删除 |
+| `/api/v1/auth/me` | GET/PUT | 获取/更新当前用户 |
+| `/api/v1/auth/change-password` | POST | 修改密码 |
+
+### 用户管理接口 (需要对应权限)
+
+| 接口 | 方法 | 所需权限 |
+|------|------|----------|
+| `/api/v1/users` | GET | `user:read` |
+| `/api/v1/users` | POST | `user:create` |
+| `/api/v1/users/{id}` | GET | `user:read` |
+| `/api/v1/users/{id}` | PUT | `user:update` |
+| `/api/v1/users/{id}` | DELETE | `user:delete` |
+
+### 角色管理接口 (需要对应权限)
+
+| 接口 | 方法 | 所需权限 |
+|------|------|----------|
+| `/api/v1/roles` | GET/POST | `role:read` / `role:create` |
+| `/api/v1/roles/{id}` | GET/PUT/DELETE | `role:read/update/delete` |
+
+### 权限管理接口 (需要对应权限)
+
+| 接口 | 方法 | 所需权限 |
+|------|------|----------|
+| `/api/v1/permissions` | GET/POST | `permission:read/create` |
+| `/api/v1/permissions/{id}` | GET/PUT/DELETE | `permission:read/update/delete` |
 
 ## 🐳 Docker 部署
 

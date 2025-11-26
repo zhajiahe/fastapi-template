@@ -69,6 +69,12 @@ pre-commit-run: ## 运行 pre-commit 检查
 	@echo "🔍 运行 pre-commit 检查..."
 	uv run pre-commit run --all-files
 
+# ==================== 数据库相关 ====================
+
+db-init-rbac: ## 初始化 RBAC 权限数据（权限、角色）
+	@echo "🔐 初始化 RBAC 权限数据..."
+	uv run python -m scripts.init_rbac
+
 # ==================== 清理相关 ====================
 
 clean: ## 清理临时文件

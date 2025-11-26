@@ -50,7 +50,6 @@ class RoleBase(BaseModel):
     code: str = Field(..., min_length=1, max_length=50, description="角色代码")
     name: str = Field(..., min_length=1, max_length=100, description="角色名称")
     description: str | None = Field(default=None, max_length=255, description="角色描述")
-    parent_id: int | None = Field(default=None, description="父角色ID")
 
 
 class RoleCreate(RoleBase):
@@ -64,7 +63,6 @@ class RoleUpdate(BaseModel):
 
     name: str | None = Field(default=None, min_length=1, max_length=100, description="角色名称")
     description: str | None = Field(default=None, max_length=255, description="角色描述")
-    parent_id: int | None = Field(default=None, description="父角色ID")
     permission_ids: list[int] | None = Field(default=None, description="权限ID列表")
 
 
@@ -103,4 +101,3 @@ class RolePermissionAssign(BaseModel):
 
     role_id: int = Field(..., description="角色ID")
     permission_ids: list[int] = Field(..., description="权限ID列表")
-

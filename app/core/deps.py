@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import verify_access_token
+from app.models.role import Role
 from app.models.user import User
 
 # HTTP Bearer 认证方案
@@ -56,7 +57,7 @@ async def get_current_user(
     result = await db.execute(
         select(User)
         .options(
-            selectinload(User.roles).selectinload("permissions")  # 加载角色和权限
+            selectinload(User.roles).selectinload(Role.permissions)  # 加载角色和权限
         )
         .where(User.id == user_id, User.deleted == 0)
     )

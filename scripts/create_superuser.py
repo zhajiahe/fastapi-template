@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
 from app.core.security import get_password_hash
+from app.models.role import Role
 from app.models.user import User
 
 
@@ -59,25 +60,40 @@ async def create_superuser():
                 logger.error(f"❌ 邮箱 '{email}' 已存在")
                 return
 
-            # 创建超级管理员
-            superuser = User(
+            # 获取或创建 admin 角色
+            result = await db.execute(select(Role).where(Role.code == "admin", Role.deleted == 0))
+            admin_role = result.scalar_one_or_none()
+
+            if not admin_role:
+                admin_role = Role(
+                    code="admin",
+                    name="管理员",
+                    description="系统管理员，拥有所有权限",
+                )
+                db.add(admin_role)
+                await db.flush()
+                logger.info("✅ 创建 admin 角色")
+
+            # 创建管理员用户
+            admin_user = User(
                 username=username,
                 email=email,
                 nickname=nickname,
                 hashed_password=get_password_hash(password),
                 is_active=True,
-                is_superuser=True,
             )
+            admin_user.roles.append(admin_role)
 
-            db.add(superuser)
+            db.add(admin_user)
             await db.commit()
-            await db.refresh(superuser)
+            await db.refresh(admin_user)
 
-            logger.info("✅ 超级管理员创建成功！")
-            logger.info(f"   用户名: {superuser.username}")
-            logger.info(f"   邮箱: {superuser.email}")
-            logger.info(f"   昵称: {superuser.nickname}")
-            logger.info(f"   ID: {superuser.id}")
+            logger.info("✅ 管理员创建成功！")
+            logger.info(f"   用户名: {admin_user.username}")
+            logger.info(f"   邮箱: {admin_user.email}")
+            logger.info(f"   昵称: {admin_user.nickname}")
+            logger.info(f"   ID: {admin_user.id}")
+            logger.info(f"   角色: admin")
 
         except Exception as e:
             logger.error(f"❌ 创建超级管理员失败: {e}")

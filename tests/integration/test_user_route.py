@@ -27,7 +27,8 @@ class TestAuthAPI:
         assert data["success"] is True
         assert data["data"]["username"] == "newuser"
         assert data["data"]["is_active"] is True
-        assert data["data"]["is_superuser"] is False
+        # 新注册用户默认没有角色
+        assert data["data"]["roles"] == []
 
     def test_register_duplicate_username(self, client: TestClient):
         """测试注册重复用户名"""
@@ -284,7 +285,6 @@ class TestUserAPI:
                 "nickname": "Test User",
                 "password": "test123456",
                 "is_active": True,
-                "is_superuser": False,
             },
             headers=auth_headers,
         )

@@ -6,7 +6,8 @@
 
 from fastapi import APIRouter, Depends, status
 
-from app.core.deps import CurrentAdmin, CurrentUser, DBSession
+from app.core.deps import CurrentUser, DBSession, require_permission
+from app.core.permissions import PermissionCode
 from app.models.base import BasePageQuery, BaseResponse, PageResponse, Token
 from app.schemas.user import (
     LoginRequest,
@@ -73,17 +74,20 @@ async def change_password(password_data: PasswordChange, current_user: CurrentUs
     return BaseResponse(success=True, code=200, msg="密码修改成功", data=None)
 
 
-# ==================== 用户管理接口（需要超级管理员权限） ====================
+# ==================== 用户管理接口（需要对应权限） ====================
 
 
-@router.get("", response_model=BaseResponse[PageResponse[UserResponse]])
+@router.get(
+    "",
+    response_model=BaseResponse[PageResponse[UserResponse]],
+    dependencies=[Depends(require_permission(PermissionCode.USER_READ))],
+)
 async def get_users(
     db: DBSession,
-    _current_user: CurrentAdmin,
     page_query: BasePageQuery = Depends(),
     query_params: UserListQuery = Depends(),
 ):
-    """获取用户列表（分页）- 需要超级管理员权限"""
+    """获取用户列表（分页）- 需要 user:read 权限"""
     user_service = UserService(db)
     users, total = await user_service.get_users(
         query_params=query_params,
@@ -99,33 +103,50 @@ async def get_users(
     )
 
 
-@router.get("/{user_id}", response_model=BaseResponse[UserResponse])
-async def get_user(user_id: int, _current_user: CurrentAdmin, db: DBSession):
-    """获取单个用户详情 - 需要超级管理员权限"""
+@router.get(
+    "/{user_id}",
+    response_model=BaseResponse[UserResponse],
+    dependencies=[Depends(require_permission(PermissionCode.USER_READ))],
+)
+async def get_user(user_id: int, db: DBSession):
+    """获取单个用户详情 - 需要 user:read 权限"""
     user_service = UserService(db)
     user = await user_service.get_user(user_id)
     return BaseResponse(success=True, code=200, msg="获取用户成功", data=UserResponse.model_validate(user))
 
 
-@router.post("", response_model=BaseResponse[UserResponse], status_code=status.HTTP_201_CREATED)
-async def create_user(user_data: UserCreate, _current_user: CurrentAdmin, db: DBSession):
-    """创建新用户 - 需要超级管理员权限"""
+@router.post(
+    "",
+    response_model=BaseResponse[UserResponse],
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(PermissionCode.USER_CREATE))],
+)
+async def create_user(user_data: UserCreate, db: DBSession):
+    """创建新用户 - 需要 user:create 权限"""
     user_service = UserService(db)
     user = await user_service.create_user(user_data)
     return BaseResponse(success=True, code=201, msg="创建用户成功", data=UserResponse.model_validate(user))
 
 
-@router.put("/{user_id}", response_model=BaseResponse[UserResponse])
-async def update_user(user_id: int, user_data: UserUpdate, _current_user: CurrentAdmin, db: DBSession):
-    """更新用户信息 - 需要超级管理员权限"""
+@router.put(
+    "/{user_id}",
+    response_model=BaseResponse[UserResponse],
+    dependencies=[Depends(require_permission(PermissionCode.USER_UPDATE))],
+)
+async def update_user(user_id: int, user_data: UserUpdate, db: DBSession):
+    """更新用户信息 - 需要 user:update 权限"""
     user_service = UserService(db)
     user = await user_service.update_user(user_id, user_data)
     return BaseResponse(success=True, code=200, msg="更新用户成功", data=UserResponse.model_validate(user))
 
 
-@router.delete("/{user_id}", response_model=BaseResponse[None])
-async def delete_user(user_id: int, _current_user: CurrentAdmin, db: DBSession):
-    """删除用户（逻辑删除）- 需要超级管理员权限"""
+@router.delete(
+    "/{user_id}",
+    response_model=BaseResponse[None],
+    dependencies=[Depends(require_permission(PermissionCode.USER_DELETE))],
+)
+async def delete_user(user_id: int, db: DBSession):
+    """删除用户（逻辑删除）- 需要 user:delete 权限"""
     user_service = UserService(db)
     await user_service.delete_user(user_id)
     return BaseResponse(success=True, code=200, msg="删除用户成功", data=None)

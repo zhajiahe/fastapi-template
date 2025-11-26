@@ -8,12 +8,24 @@ from alembic import context
 from app.core.config import settings
 from app.models.base import Base
 
+# Import all models to ensure they are registered with Base.metadata
+from app.models import Permission, Role, User  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
+# Convert async database URL to sync URL for Alembic
+database_url = settings.DATABASE_URL
+if database_url.startswith("sqlite+aiosqlite"):
+    database_url = database_url.replace("sqlite+aiosqlite", "sqlite")
+elif database_url.startswith("postgresql+asyncpg"):
+    database_url = database_url.replace("postgresql+asyncpg", "postgresql")
+elif database_url.startswith("mysql+aiomysql"):
+    database_url = database_url.replace("mysql+aiomysql", "mysql+pymysql")
+
 # Set database URL from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

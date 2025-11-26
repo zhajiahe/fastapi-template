@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BaseTableMixin
+
+if TYPE_CHECKING:
+    from app.models.role import Role
 
 
 class User(Base, BaseTableMixin):
@@ -15,11 +22,12 @@ class User(Base, BaseTableMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False, comment="加密密码")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, comment="是否激活")
 
-    # 关联角色
-    roles: Mapped[list["Role"]] = relationship(  # noqa: F821
+    # 关联角色 - 使用 lazy="selectin" 自动急切加载
+    roles: Mapped[list[Role]] = relationship(  # noqa: F821
         "Role",
         secondary="user_roles",
         back_populates="users",
+        lazy="selectin",  # 自动急切加载，解决惰性加载问题
     )
 
     def __repr__(self) -> str:

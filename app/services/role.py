@@ -83,12 +83,6 @@ class RoleService:
         if await self.role_repo.code_exists(data.code):
             raise BadRequestException(msg="角色代码已存在")
 
-        # 检查父角色是否存在
-        if data.parent_id:
-            parent = await self.role_repo.get_by_id(data.parent_id)
-            if not parent:
-                raise BadRequestException(msg="父角色不存在")
-
         # 获取权限
         permissions = await self.permission_repo.get_by_ids(data.permission_ids)
 
@@ -109,18 +103,6 @@ class RoleService:
         if not role:
             raise NotFoundException(msg="角色不存在")
 
-        # 检查父角色是否存在且不形成循环
-        if data.parent_id is not None:
-            if data.parent_id == role_id:
-                raise BadRequestException(msg="不能将自己设为父角色")
-            if data.parent_id != 0:
-                parent = await self.role_repo.get_by_id(data.parent_id)
-                if not parent:
-                    raise BadRequestException(msg="父角色不存在")
-                # 检查是否形成循环
-                if await self._would_create_cycle(role_id, data.parent_id):
-                    raise BadRequestException(msg="不能形成循环继承关系")
-
         # 更新权限
         if data.permission_ids is not None:
             permissions = await self.permission_repo.get_by_ids(data.permission_ids)
@@ -139,32 +121,10 @@ class RoleService:
 
     async def delete_role(self, role_id: int) -> None:
         """删除角色"""
-        role = await self.role_repo.get_by_id(role_id)
+        role = await self.role_repo.get_by_id_with_permissions(role_id)
         if not role:
             raise NotFoundException(msg="角色不存在")
-
-        # 检查是否有子角色
-        if role.children:
-            raise BadRequestException(msg="该角色下有子角色，无法删除")
 
         success = await self.role_repo.delete(role_id)
         if not success:
             raise NotFoundException(msg="角色不存在")
-
-    async def _would_create_cycle(self, role_id: int, new_parent_id: int) -> bool:
-        """检查是否会形成循环继承"""
-        current_id = new_parent_id
-        visited = {role_id}
-
-        while current_id:
-            if current_id in visited:
-                return True
-            visited.add(current_id)
-
-            parent = await self.role_repo.get_by_id(current_id)
-            if not parent:
-                break
-            current_id = parent.parent_id  # type: ignore
-
-        return False
-

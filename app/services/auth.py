@@ -85,7 +85,6 @@ class AuthService:
                 "nickname": user_data.nickname,
                 "hashed_password": get_password_hash(user_data.password),
                 "is_active": True,
-                "is_superuser": False,
             }
         )
 
