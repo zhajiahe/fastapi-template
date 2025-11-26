@@ -22,7 +22,7 @@ class UserCreate(UserBase):
 
     password: str = Field(..., min_length=6, max_length=128, description="密码")
     is_active: bool = Field(default=True, description="是否激活")
-    is_superuser: bool = Field(default=False, description="是否超级管理员")
+    role_ids: list[int] = Field(default_factory=list, description="角色ID列表")
 
     @field_validator("password")
     @classmethod
@@ -39,7 +39,17 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = Field(default=None, description="邮箱")
     nickname: str | None = Field(default=None, min_length=1, max_length=50, description="昵称")
     is_active: bool | None = Field(default=None, description="是否激活")
-    is_superuser: bool | None = Field(default=None, description="是否超级管理员")
+    role_ids: list[int] | None = Field(default=None, description="角色ID列表")
+
+
+class RoleSimple(BaseModel):
+    """角色简单信息"""
+
+    id: int
+    code: str
+    name: str
+
+    model_config = {"from_attributes": True}
 
 
 class UserResponse(UserBase):
@@ -47,7 +57,7 @@ class UserResponse(UserBase):
 
     id: int = Field(..., description="用户ID")
     is_active: bool = Field(..., description="是否激活")
-    is_superuser: bool = Field(..., description="是否超级管理员")
+    roles: list[RoleSimple] = Field(default_factory=list, description="角色列表")
     create_time: datetime | None = Field(default=None, description="创建时间")
     update_time: datetime | None = Field(default=None, description="更新时间")
 
@@ -59,7 +69,6 @@ class UserListQuery(BaseModel):
 
     keyword: str | None = Field(default=None, description="搜索关键词（用户名、邮箱、昵称）")
     is_active: bool | None = Field(default=None, description="是否激活")
-    is_superuser: bool | None = Field(default=None, description="是否超级管理员")
 
 
 class PasswordChange(BaseModel):

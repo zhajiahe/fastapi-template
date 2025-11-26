@@ -6,7 +6,7 @@
 
 from fastapi import APIRouter, Depends, status
 
-from app.core.deps import CurrentSuperUser, CurrentUser, DBSession
+from app.core.deps import CurrentAdmin, CurrentUser, DBSession
 from app.models.base import BasePageQuery, BaseResponse, PageResponse, Token
 from app.schemas.user import (
     LoginRequest,
@@ -79,7 +79,7 @@ async def change_password(password_data: PasswordChange, current_user: CurrentUs
 @router.get("", response_model=BaseResponse[PageResponse[UserResponse]])
 async def get_users(
     db: DBSession,
-    _current_user: CurrentSuperUser,
+    _current_user: CurrentAdmin,
     page_query: BasePageQuery = Depends(),
     query_params: UserListQuery = Depends(),
 ):
@@ -100,7 +100,7 @@ async def get_users(
 
 
 @router.get("/{user_id}", response_model=BaseResponse[UserResponse])
-async def get_user(user_id: int, _current_user: CurrentSuperUser, db: DBSession):
+async def get_user(user_id: int, _current_user: CurrentAdmin, db: DBSession):
     """获取单个用户详情 - 需要超级管理员权限"""
     user_service = UserService(db)
     user = await user_service.get_user(user_id)
@@ -108,7 +108,7 @@ async def get_user(user_id: int, _current_user: CurrentSuperUser, db: DBSession)
 
 
 @router.post("", response_model=BaseResponse[UserResponse], status_code=status.HTTP_201_CREATED)
-async def create_user(user_data: UserCreate, _current_user: CurrentSuperUser, db: DBSession):
+async def create_user(user_data: UserCreate, _current_user: CurrentAdmin, db: DBSession):
     """创建新用户 - 需要超级管理员权限"""
     user_service = UserService(db)
     user = await user_service.create_user(user_data)
@@ -116,7 +116,7 @@ async def create_user(user_data: UserCreate, _current_user: CurrentSuperUser, db
 
 
 @router.put("/{user_id}", response_model=BaseResponse[UserResponse])
-async def update_user(user_id: int, user_data: UserUpdate, _current_user: CurrentSuperUser, db: DBSession):
+async def update_user(user_id: int, user_data: UserUpdate, _current_user: CurrentAdmin, db: DBSession):
     """更新用户信息 - 需要超级管理员权限"""
     user_service = UserService(db)
     user = await user_service.update_user(user_id, user_data)
@@ -124,7 +124,7 @@ async def update_user(user_id: int, user_data: UserUpdate, _current_user: Curren
 
 
 @router.delete("/{user_id}", response_model=BaseResponse[None])
-async def delete_user(user_id: int, _current_user: CurrentSuperUser, db: DBSession):
+async def delete_user(user_id: int, _current_user: CurrentAdmin, db: DBSession):
     """删除用户（逻辑删除）- 需要超级管理员权限"""
     user_service = UserService(db)
     await user_service.delete_user(user_id)

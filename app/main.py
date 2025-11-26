@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+from app.api.roles import permission_router
+from app.api.roles import router as roles_router
 from app.api.users import auth_router
 from app.api.users import router as users_router
 from app.core.config import settings
@@ -67,6 +69,12 @@ app.include_router(auth_router, prefix="/api/v1")
 
 # 注册用户路由
 app.include_router(users_router, prefix="/api/v1")
+
+# 注册角色路由
+app.include_router(roles_router, prefix="/api/v1")
+
+# 注册权限路由
+app.include_router(permission_router, prefix="/api/v1")
 
 
 if __name__ == "__main__":

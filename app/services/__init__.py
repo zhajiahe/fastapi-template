@@ -5,9 +5,12 @@ Service 层
 """
 
 from app.services.auth import AuthService
+from app.services.role import PermissionService, RoleService
 from app.services.user import UserService
 
 __all__ = [
     "AuthService",
     "UserService",
+    "RoleService",
+    "PermissionService",
 ]

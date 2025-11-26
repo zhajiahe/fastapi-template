@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, BaseTableMixin
 
@@ -14,7 +14,52 @@ class User(Base, BaseTableMixin):
     nickname: Mapped[str] = mapped_column(String(50), nullable=False, comment="昵称")
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False, comment="加密密码")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, comment="是否激活")
-    is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, comment="是否超级管理员")
+
+    # 关联角色
+    roles: Mapped[list["Role"]] = relationship(  # noqa: F821
+        "Role",
+        secondary="user_roles",
+        back_populates="users",
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username}, email={self.email})>"
+
+    def has_permission(self, permission_code: str) -> bool:
+        """
+        检查用户是否拥有指定权限
+
+        Args:
+            permission_code: 权限代码
+
+        Returns:
+            是否拥有权限
+        """
+        for role in self.roles:
+            if permission_code in role.get_all_permissions():
+                return True
+        return False
+
+    def has_role(self, role_code: str) -> bool:
+        """
+        检查用户是否拥有指定角色
+
+        Args:
+            role_code: 角色代码
+
+        Returns:
+            是否拥有角色
+        """
+        return any(role.code == role_code for role in self.roles)
+
+    def get_all_permissions(self) -> set[str]:
+        """
+        获取用户的所有权限
+
+        Returns:
+            权限代码集合
+        """
+        permissions: set[str] = set()
+        for role in self.roles:
+            permissions.update(role.get_all_permissions())
+        return permissions
