@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequestException, ForbiddenException, UnauthorizedException
 from app.core.security import create_tokens, get_password_hash, verify_password, verify_refresh_token
-from app.models.base import Token
 from app.models.user import User
 from app.repositories.user import UserRepository
+from app.schemas.token import Token
 from app.schemas.user import LoginRequest, UserCreate
 
 
@@ -88,6 +88,7 @@ class AuthService:
                 "is_superuser": False,
             }
         )
+        await self.db.commit()
 
         return user
 
@@ -158,4 +159,4 @@ class AuthService:
 
         # 更新密码
         user.hashed_password = get_password_hash(new_password)
-        await self.db.flush()
+        await self.db.commit()

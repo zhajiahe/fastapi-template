@@ -32,11 +32,11 @@ app = FastAPI(
 register_exception_handlers(app)
 
 # 添加日志中间件
-app.add_middleware(LoggingMiddleware)
+app.add_middleware(LoggingMiddleware)  # ty: ignore[invalid-argument-type]
 
 # 配置 CORS（从配置文件读取允许的来源）
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # ty: ignore[invalid-argument-type]
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],

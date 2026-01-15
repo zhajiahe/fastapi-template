@@ -7,7 +7,8 @@
 from fastapi import APIRouter, Depends, status
 
 from app.core.deps import CurrentSuperUser, CurrentUser, DBSession
-from app.models.base import BasePageQuery, BaseResponse, PageResponse, Token
+from app.models.base import BasePageQuery, BaseResponse, PageResponse
+from app.schemas.token import Token
 from app.schemas.user import (
     LoginRequest,
     PasswordChange,

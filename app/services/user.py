@@ -96,6 +96,7 @@ class UserService:
                 "is_superuser": user_data.is_superuser,
             }
         )
+        await self.db.commit()
 
         return user
 
@@ -130,6 +131,7 @@ class UserService:
         # 更新用户
         update_data = user_data.model_dump(exclude_unset=True)
         user = await self.user_repo.update(user, update_data)
+        await self.db.commit()
 
         return user
 
@@ -165,6 +167,7 @@ class UserService:
 
         if update_data:
             user = await self.user_repo.update(user, update_data)
+            await self.db.commit()
 
         return user
 
@@ -181,3 +184,4 @@ class UserService:
         success = await self.user_repo.delete(user_id, soft_delete=True)
         if not success:
             raise NotFoundException(msg="用户不存在")
+        await self.db.commit()

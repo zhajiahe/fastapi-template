@@ -21,14 +21,14 @@ repos:
       # Run the formatter
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+  # ty - 超快 Python 类型检查器 (比 mypy 快 10x-100x)
+  # https://github.com/astral-sh/ty
+  - repo: local
     hooks:
-      - id: mypy
-        additional_dependencies:
-          - pydantic>=2.12.4
-          - sqlalchemy>=2.0.44
-          - fastapi>=0.121.1
-          - types-aiofiles
-        args: [--ignore-missing-imports, --show-error-codes, --explicit-package-bases]
-        exclude: ^alembic/
+      - id: ty
+        name: ty (type check)
+        entry: uv run ty check
+        language: system
+        types: [python]
+        pass_filenames: false
+        exclude: ^(alembic/|tests/)

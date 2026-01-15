@@ -52,12 +52,34 @@ format: ## 格式化代码
 	@echo "🎨 格式化代码..."
 	uv run ruff format app/ tests/
 
-type-check: ## 类型检查
+type-check: ## 类型检查 (使用 ty - 比 mypy 快 10x-100x)
 	@echo "🔍 类型检查..."
-	uv run mypy app/
+	uv run ty check
 
-check: lint format type-check ## 运行所有检查（lint + format + type-check）
+check: lint-fix format type-check ## 运行所有检查（lint + format + type-check）
 	@echo "✅ 所有检查完成"
+
+# ==================== 数据库迁移 ====================
+
+db-migrate: ## 创建数据库迁移 (用法: make db-migrate msg="迁移说明")
+	@echo "📝 创建数据库迁移..."
+	uv run alembic revision --autogenerate -m "$(msg)"
+
+db-upgrade: ## 升级数据库到最新版本
+	@echo "⬆️ 升级数据库..."
+	uv run alembic upgrade head
+
+db-downgrade: ## 回滚数据库到上一版本
+	@echo "⬇️ 回滚数据库..."
+	uv run alembic downgrade -1
+
+db-history: ## 查看迁移历史
+	@echo "📜 迁移历史..."
+	uv run alembic history --verbose
+
+db-current: ## 查看当前数据库版本
+	@echo "📌 当前数据库版本..."
+	uv run alembic current
 
 # ==================== Pre-commit ====================
 
@@ -77,7 +99,7 @@ clean: ## 清理临时文件
 	@find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	@find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name ".ty" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@rm -rf htmlcov/ .coverage 2>/dev/null || true
 	@echo "✅ 清理完成"

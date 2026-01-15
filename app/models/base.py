@@ -42,12 +42,12 @@ class BasePageQuery(BaseModel):
     page_num: int = Field(default=1, description="页码", ge=1)
     page_size: int = Field(default=10, description="数量", ge=1)
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def offset(self) -> int:
         return (self.page_num - 1) * self.page_size
 
-    @computed_field  # type: ignore[prop-decorator]
+    @computed_field
     @property
     def limit(self) -> int:
         return self.page_size
@@ -61,21 +61,3 @@ class PageResponse[T](BaseModel):
     page_size: int = Field(10, description="每页数量")
     total: int = Field(0, description="总记录数")
     items: list[T] = Field(default_factory=list, description="分页数据")
-
-
-class Token(BaseModel):
-    """Token基础数据"""
-
-    id: int
-    nickname: str
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-# Contents of JWT token
-class TokenPayload(BaseModel):
-    """TokenPayload基础数据"""
-
-    exp: int  # 过期时间（Unix时间戳，必须为整数）
-    sub: str | None = None

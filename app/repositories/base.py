@@ -6,10 +6,23 @@ Repository 基类
 
 from typing import Any
 
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import Base
+
+# 支持 dict 或 Pydantic schema 作为输入
+type CreateUpdateInput = dict[str, Any] | PydanticBaseModel
+
+
+def _to_dict(obj: CreateUpdateInput, *, exclude_unset: bool = False) -> dict[str, Any]:
+    """将输入转换为字典"""
+    if isinstance(obj, dict):
+        return obj
+    if exclude_unset:
+        return obj.model_dump(exclude_unset=True)
+    return obj.model_dump()
 
 
 class BaseRepository[ModelType: Base]:
@@ -36,11 +49,11 @@ class BaseRepository[ModelType: Base]:
         Returns:
             模型实例或 None
         """
-        query = select(self.model).where(self.model.id == id)  # type: ignore[attr-defined]
+        query = select(self.model).where(self.model.id == id)
 
         # 如果模型有 deleted 字段，过滤已删除记录
         if hasattr(self.model, "deleted"):
-            query = query.where(self.model.deleted == 0)  # type: ignore[attr-defined]
+            query = query.where(self.model.deleted == 0)
 
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
@@ -67,7 +80,7 @@ class BaseRepository[ModelType: Base]:
 
         # 如果模型有 deleted 字段，过滤已删除记录
         if hasattr(self.model, "deleted"):
-            query = query.where(self.model.deleted == 0)  # type: ignore[attr-defined]
+            query = query.where(self.model.deleted == 0)
 
         # 应用过滤条件
         if filters:
@@ -77,7 +90,7 @@ class BaseRepository[ModelType: Base]:
 
         # 按创建时间倒序排列（如果有该字段）
         if hasattr(self.model, "create_time"):
-            query = query.order_by(self.model.create_time.desc())  # type: ignore[attr-defined]
+            query = query.order_by(self.model.create_time.desc())
 
         query = query.offset(skip).limit(limit)
         result = await self.db.execute(query)
@@ -97,7 +110,7 @@ class BaseRepository[ModelType: Base]:
 
         # 如果模型有 deleted 字段，过滤已删除记录
         if hasattr(self.model, "deleted"):
-            query = query.where(self.model.deleted == 0)  # type: ignore[attr-defined]
+            query = query.where(self.model.deleted == 0)
 
         # 应用过滤条件
         if filters:
@@ -108,17 +121,18 @@ class BaseRepository[ModelType: Base]:
         result = await self.db.execute(query)
         return result.scalar() or 0
 
-    async def create(self, obj_in: dict[str, Any]) -> ModelType:
+    async def create(self, obj_in: CreateUpdateInput) -> ModelType:
         """
         创建新记录
 
         Args:
-            obj_in: 创建数据
+            obj_in: 创建数据（支持 dict 或 Pydantic schema）
 
         Returns:
             创建的模型实例
         """
-        db_obj = self.model(**obj_in)
+        data = _to_dict(obj_in)
+        db_obj = self.model(**data)
         self.db.add(db_obj)
         await self.db.flush()
         await self.db.refresh(db_obj)
@@ -127,19 +141,20 @@ class BaseRepository[ModelType: Base]:
     async def update(
         self,
         db_obj: ModelType,
-        obj_in: dict[str, Any],
+        obj_in: CreateUpdateInput,
     ) -> ModelType:
         """
         更新记录
 
         Args:
             db_obj: 要更新的模型实例
-            obj_in: 更新数据
+            obj_in: 更新数据（支持 dict 或 Pydantic schema）
 
         Returns:
             更新后的模型实例
         """
-        for field, value in obj_in.items():
+        data = _to_dict(obj_in, exclude_unset=True)
+        for field, value in data.items():
             if hasattr(db_obj, field) and value is not None:
                 setattr(db_obj, field, value)
 

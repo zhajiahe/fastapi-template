@@ -27,18 +27,25 @@ async def get_db() -> AsyncGenerator[AsyncSession, Any]:
     """
     依赖注入函数，用于获取数据库会话
 
+    注意: 此函数不会自动提交事务，需要在 Service 层手动调用 commit()。
+    这样设计是为了给开发者更多的事务控制权。
+
     使用示例:
     ```python
     @router.get("/users")
     async def get_users(db: AsyncSession = Depends(get_db)):
         result = await db.execute(select(User))
         return result.scalars().all()
+
+    @router.post("/users")
+    async def create_user(db: AsyncSession = Depends(get_db)):
+        db.add(user)
+        await db.commit()  # 需要手动提交
     ```
     """
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             await session.rollback()
             raise
